@@ -358,6 +358,67 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertEqual(right_asmt["eye"], "right")
             self.assertEqual(right_asmt["intake"]["history"], [])
 
+    def test_demo_workbench_multi_agent_and_no_image_flows(self):
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
+        with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
+            page = client.get("/v1/demo")
+            self.assertEqual(page.status_code, 200)
+            self.assertIn("眼底筛查与随访多智能体演示工作台", page.text)
+            self.assertIn("connect-src 'self'", page.headers.get("content-security-policy", ""))
+
+            sample_img = client.get("/v1/demo/sample/idrid_03")
+            self.assertEqual(sample_img.status_code, 200)
+            self.assertEqual(client.get("/v1/demo/sample/unknown_id").status_code, 404)
+
+            # 1. Sample eye screening run (A1 -> W10 -> A2 -> A3 -> A4)
+            run1 = client.post(
+                "/v1/demo/run",
+                json={
+                    "mode": "sample",
+                    "sample_id": "idrid_03",
+                    "audience": "caregiver",
+                    "eye": "left",
+                    "symptoms": "视物模糊",
+                    "history": "糖尿病5年",
+                },
+            )
+            self.assertEqual(run1.status_code, 200)
+            data1 = run1.json()
+            self.assertTrue(data1["ok"])
+            self.assertEqual(data1["eye"], "left")
+            self.assertTrue(data1["visual_urls"]["report"].startswith("/v1/view/"))
+            self.assertIn("patient", data1["narratives"])
+            self.assertIn("caregiver", data1["narratives"])
+            self.assertIn("clinician", data1["narratives"])
+            self.assertGreaterEqual(len(data1["trace"]), 4)
+
+            # 2. Same-eye second run triggers automatic A4 comparison & isolates default session
+            self.engine.mode = "normal"
+            run2 = client.post(
+                "/v1/demo/run",
+                json={"mode": "sample", "sample_id": "public_proxy", "audience": "clinician", "eye": "left"},
+            )
+            self.assertEqual(run2.status_code, 200)
+            self.assertTrue(run2.json()["comparison_preview"]["comparable"])
+            ctx_default = client.get("/v1/context", headers=HEADERS).json()["data"]
+            self.assertFalse(ctx_default["has_active_assessment"])
+
+            # 3. No-image urgent symptom override vs general checkup Q&A
+            no_img_urgent = client.post(
+                "/v1/demo/run",
+                json={"mode": "no_image", "query_text": "今天突然眼前大量飞蚊飘动伴闪光感"},
+            )
+            self.assertEqual(no_img_urgent.status_code, 200)
+            self.assertEqual(no_img_urgent.json()["care_priority"], "urgent_ophthalmology")
+            self.assertIn("RULE_URGENT_SYMPTOM_01", no_img_urgent.json()["rule_ids"])
+
+            no_img_benign = client.post(
+                "/v1/demo/run",
+                json={"mode": "no_image", "query_text": "体检写着豹纹状眼底TSLN是什么意思"},
+            )
+            self.assertEqual(no_img_benign.status_code, 200)
+            self.assertEqual(no_img_benign.json()["care_priority"], "no_image_guidance")
+
 
 if __name__ == "__main__":
     unittest.main()

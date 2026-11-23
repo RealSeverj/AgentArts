@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+import shutil
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
@@ -295,6 +296,12 @@ def main():
         if multi_schema is not None:
             (new_files / "retina_tools.openapi.json").write_text(
                 json.dumps(multi_schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        prompts_src = template_root / "prompts"
+        if prompts_src.is_dir():
+            prompts_dst = new_files / "prompts"
+            prompts_dst.mkdir()
+            for prompt_file in sorted(prompts_src.glob("*.txt")):
+                shutil.copy2(prompt_file, prompts_dst / prompt_file.name)
         new_files.rename(output)
     print(f"Created {output}")
 

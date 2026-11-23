@@ -164,6 +164,64 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                    "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"}
         return Response(payload, media_type=MEDIA[name], headers=headers)
 
+    @app.get("/v1/demo", include_in_schema=False)
+    def demo_workbench_page():
+        from inference.demo_workbench import render_demo_workbench_html
+
+        html_doc = render_demo_workbench_html(ready=ready())
+        headers = {
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+            "Content-Security-Policy": (
+                "default-src 'self'; img-src 'self' data: blob:; "
+                "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+                "connect-src 'self'; base-uri 'none'; form-action 'self'"
+            ),
+        }
+        return Response(html_doc.encode("utf-8"), media_type="text/html; charset=utf-8", headers=headers)
+
+    @app.get("/v1/demo/sample/{sample_id}", include_in_schema=False)
+    def demo_sample_image(sample_id: str):
+        from inference.demo_workbench import get_sample_image_bytes
+
+        blob = get_sample_image_bytes(sample_id)
+        if blob is None:
+            return Response(status_code=404)
+        return Response(blob, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"})
+
+    @app.post("/v1/demo/run", include_in_schema=False)
+    def demo_run_workflow(body: dict):
+        from inference.demo_workbench import DemoRunRequest, run_demo_workflow
+
+        try:
+            req = DemoRunRequest.model_validate(body)
+        except Exception:
+            return safe_json({"ok": False, "message": "演示请求参数格式有误，请检查输入字段。"}, 422)
+        if req.mode != "no_image":
+            if not ready():
+                return safe_json({"ok": False, "message": "推理模型尚未就绪，可先切换「无图咨询」体验分诊与科普。"}, 503)
+            if not gate.acquire(blocking=False):
+                return safe_json({"ok": False, "message": "服务正在处理另一张图像，请稍候片刻重试。"}, 429)
+        try:
+            data = run_demo_workflow(
+                req,
+                engine=app.state.engine,
+                workflow=workflow,
+                delivery=delivery,
+                policy=policy,
+                fetcher=fetcher,
+            )
+            return safe_json(data, 200)
+        except InputImageError as error:
+            return safe_json({"ok": False, "message": str(error)}, 422)
+        except Exception as error:
+            LOGGER.error("demo_run_failed: %s", type(error).__name__)
+            return safe_json({"ok": False, "message": "演示执行失败，请检查输入图片或日志。"}, 500)
+        finally:
+            if req.mode != "no_image":
+                gate.release()
+
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error):
         # Never echo a signed URL, image payload or API key through Pydantic details.

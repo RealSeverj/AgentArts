@@ -604,7 +604,8 @@ class ClinicalWorkflowStore:
             if row is not None:
                 return row
         return conn.execute(
-            "SELECT * FROM assessments ORDER BY created_utc DESC LIMIT 1"
+            "SELECT * FROM assessments WHERE session_id = ? ORDER BY created_utc DESC LIMIT 1",
+            (session_id,),
         ).fetchone()
 
     def get_context(self, *, session_id: str = "default") -> dict[str, Any]:
@@ -626,7 +627,9 @@ class ClinicalWorkflowStore:
             ).fetchone()
             latest_plan = json.loads(plan_row["plan_json"]) if plan_row else None
             recent_rows = conn.execute(
-                "SELECT assessment_id, created_utc, eye, image_sha256 FROM assessments ORDER BY created_utc DESC LIMIT 5"
+                "SELECT assessment_id, created_utc, eye, image_sha256 FROM assessments "
+                "WHERE session_id = ? ORDER BY created_utc DESC LIMIT 5",
+                (session_id,),
             ).fetchall()
             return {
                 "has_active_assessment": True,
