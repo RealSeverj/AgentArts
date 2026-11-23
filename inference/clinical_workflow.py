@@ -11,7 +11,7 @@ import threading
 from typing import Any, Literal
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from inference.report_summary import ELEVEN_LABELS, FIVE_LABELS, LABELS
 
@@ -42,6 +42,24 @@ LABEL_SOURCES = {
 }
 
 
+def _coerce_optional_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return value
+
+
+def _coerce_str_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        parts = [part.strip() for part in re.split(r"[，,。;；\n]+", value) if part.strip()]
+        return parts[:20]
+    return value
+
+
 class IntakeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     assessment_id: str | None = Field(default=None, min_length=1, max_length=128)
@@ -52,11 +70,38 @@ class IntakeRequest(BaseModel):
     history: list[str] = Field(default_factory=list, max_length=20)
     confirmed_plan: str | None = Field(default=None, max_length=512)
 
+    @field_validator("assessment_id", "eye", "symptom_onset", "confirmed_plan", mode="before")
+    @classmethod
+    def normalize_optional_strings(cls, value: Any) -> Any:
+        return _coerce_optional_str(value)
+
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def normalize_session_id(cls, value: Any) -> Any:
+        cleaned = _coerce_optional_str(value)
+        return "default" if cleaned is None else cleaned
+
+    @field_validator("symptoms", "history", mode="before")
+    @classmethod
+    def normalize_string_lists(cls, value: Any) -> Any:
+        return _coerce_str_list(value)
+
 
 class CareEvaluateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     assessment_id: str | None = Field(default=None, min_length=1, max_length=128)
     session_id: str = Field(default="default", min_length=1, max_length=128)
+
+    @field_validator("assessment_id", mode="before")
+    @classmethod
+    def normalize_assessment_id(cls, value: Any) -> Any:
+        return _coerce_optional_str(value)
+
+    @field_validator("session_id", mode="before")
+    @classmethod
+    def normalize_session_id(cls, value: Any) -> Any:
+        cleaned = _coerce_optional_str(value)
+        return "default" if cleaned is None else cleaned
 
 
 class CompareRequest(BaseModel):

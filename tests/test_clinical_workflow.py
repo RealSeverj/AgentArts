@@ -185,21 +185,24 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertLessEqual(len(care1["questions_to_confirm"]), 2)
             self.assertIn("eye", care1["missing_facts"])
 
-            # 2. Add negative symptom + eye + diabetes + laser history -> ready plan
+            # 2. Add negative symptom + eye + diabetes + laser history (as comma-separated string & empty optional fields) -> ready plan
             intake1 = client.post(
                 "/v1/intake",
                 json={
                     "assessment_id": id1,
+                    "session_id": "",
                     "eye": "left",
-                    "symptoms": ["无飞蚊、无闪光感"],
-                    "history": ["2型糖尿病6年", "2024年左眼激光光凝"],
+                    "symptoms": "无飞蚊，无闪光感",
+                    "history": "2型糖尿病6年, 2024年左眼激光光凝",
+                    "symptom_onset": "",
+                    "confirmed_plan": None,
                 },
                 headers=HEADERS,
             )
             self.assertEqual(intake1.status_code, 200)
             self.assertEqual(intake1.json()["data"]["intake_revision"], 2)
 
-            care2 = client.post("/v1/care/evaluate", json={"assessment_id": id1}, headers=HEADERS).json()["data"]
+            care2 = client.post("/v1/care/evaluate", json={"assessment_id": "", "session_id": ""}, headers=HEADERS).json()["data"]
             self.assertEqual(care2["care_priority"], "scheduled_ophthalmology")
             self.assertEqual(care2["missing_facts"], [])
             self.assertEqual(care2["plan_status"], "ready")
