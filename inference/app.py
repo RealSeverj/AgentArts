@@ -234,7 +234,12 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                 response["report_summary"]["clinical_review"] = build_clinical_review(
                     response, response.get("visual_report"))
             if response["status"] in {"ok", "partial", "quality_rejected"}:
-                workflow.record_screening(response)
+                workflow.record_screening(
+                    response,
+                    eye=body.eye,
+                    symptoms=body.symptoms,
+                    history=body.history,
+                )
             status_code = {"tool_unavailable": 503, "error": 500}.get(response["status"], 200)
             return safe_json(response, status_code)
         except InputImageError as error:

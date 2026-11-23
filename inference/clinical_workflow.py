@@ -114,6 +114,17 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _coerce_eye(value: Any) -> str:
+    if not isinstance(value, str):
+        return "unknown"
+    text = value.strip().lower()
+    if text in ("left", "os", "l") or "左" in text:
+        return "left"
+    if text in ("right", "od", "r") or "右" in text:
+        return "right"
+    return "unknown"
+
+
 def _clean_text_list(items: list[str]) -> list[str]:
     cleaned: list[str] = []
     for raw in items:
@@ -511,20 +522,34 @@ class ClinicalWorkflowStore:
                 self._conn_obj.close()
                 self._conn_obj = None
 
-    def record_screening(self, screening: dict[str, Any], *, session_id: str = "default") -> str | None:
+    def record_screening(
+        self,
+        screening: dict[str, Any],
+        *,
+        session_id: str = "default",
+        eye: str | None = None,
+        symptoms: str | list[str] | None = None,
+        history: str | list[str] | None = None,
+    ) -> str | None:
         assessment_id = screening.get("request_id")
         if not assessment_id:
             return None
         now = _utc_now()
+        norm_eye = _coerce_eye(eye)
+        norm_symptoms = _clean_text_list(_coerce_str_list(symptoms))
+        norm_history = _clean_text_list(_coerce_str_list(history))
+        has_user_facts = norm_eye != "unknown" or bool(norm_symptoms) or bool(norm_history)
         intake = {
-            "eye": "unknown",
-            "symptoms": [],
+            "eye": norm_eye,
+            "symptoms": norm_symptoms,
             "symptom_onset": None,
-            "history": [],
+            "history": norm_history,
             "confirmed_plan": None,
             "revision": 1,
             "updated_utc": now,
         }
+        if has_user_facts:
+            intake["source"] = "user_reported"
         care = evaluate_care_rules(screening, intake)
         evidence = build_evidence_packet(screening, intake, care)
         with self._lock:
@@ -541,7 +566,7 @@ class ClinicalWorkflowStore:
                     session_id,
                     evidence["created_utc"],
                     screening.get("image_sha256"),
-                    "unknown",
+                    norm_eye,
                     1,
                     json.dumps(intake, ensure_ascii=False),
                     json.dumps(screening, ensure_ascii=False),

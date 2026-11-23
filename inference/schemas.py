@@ -13,6 +13,9 @@ CONTRACT_VERSION = "draft-20261114.1"
 class ScreenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     image_url: str = Field(min_length=1, max_length=8192, description="可访问的 HTTPS JPEG、PNG 或 WEBP 图片地址")
+    eye: str | None = Field(default=None, max_length=32, description="可选眼别（left/right/unknown）")
+    symptoms: str | list[str] | None = Field(default=None, description="可选随图症状描述")
+    history: str | list[str] | None = Field(default=None, description="可选随图既往病史")
 
 
 class StageResult(BaseModel):

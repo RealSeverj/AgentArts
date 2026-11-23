@@ -315,6 +315,49 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertIn("立即眼科急诊评估", updated_html.text)
             self.assertIn("随访计划 v1", updated_html.text)
 
+    def test_two_sequential_images_preserve_distinct_eye_bindings(self):
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
+        with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
+            r_left = client.post(
+                "/v1/screen_fundus",
+                json={"image_url": URL, "eye": "左眼", "symptoms": "轻微视物模糊"},
+                headers=HEADERS,
+            )
+            self.assertEqual(r_left.status_code, 200)
+            id_left = r_left.json()["request_id"]
+            path_left = "/" + r_left.json()["visual_report"]["report_url"].split("https://severj.top/", 1)[1]
+
+            self.engine.mode = "normal"
+            r_right = client.post(
+                "/v1/screen_fundus",
+                json={"image_url": URL, "eye": "right"},
+                headers=HEADERS,
+            )
+            self.assertEqual(r_right.status_code, 200)
+            id_right = r_right.json()["request_id"]
+            path_right = "/" + r_right.json()["visual_report"]["report_url"].split("https://severj.top/", 1)[1]
+
+            html_left = client.get(path_left).text
+            html_right = client.get(path_right).text
+            self.assertIn("左眼（OS）", html_left)
+            self.assertNotIn("右眼（OD）", html_left)
+            self.assertIn("轻微视物模糊", html_left)
+            self.assertIn("右眼（OD）", html_right)
+            self.assertNotIn("左眼（OS）", html_right)
+
+            # Updating left image later with explicit assessment_id never mutates right image
+            client.post(
+                "/v1/intake",
+                json={"assessment_id": id_left, "history": "2型糖尿病3年"},
+                headers=HEADERS,
+            )
+            left_asmt = client.get(f"/v1/assessments/{id_left}", headers=HEADERS).json()["data"]["evidence_packet"]
+            right_asmt = client.get(f"/v1/assessments/{id_right}", headers=HEADERS).json()["data"]["evidence_packet"]
+            self.assertEqual(left_asmt["eye"], "left")
+            self.assertEqual(left_asmt["intake"]["history"], ["2型糖尿病3年"])
+            self.assertEqual(right_asmt["eye"], "right")
+            self.assertEqual(right_asmt["intake"]["history"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

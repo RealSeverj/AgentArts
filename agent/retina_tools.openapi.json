@@ -35,6 +35,18 @@
                   "image_url": {
                     "type": "string",
                     "description": "本次眼底图像的完整 HTTPS 地址。保留全部路径、查询参数和百分号编码，原样传入。"
+                  },
+                  "eye": {
+                    "type": "string",
+                    "description": "可选。当用户随图明确说明了左右眼别时直接填入：left（左眼）、right（右眼）或 unknown；切勿在同一轮另外并发调用 record_intake。"
+                  },
+                  "symptoms": {
+                    "type": "string",
+                    "description": "可选。当用户随图说明了眼部症状时直接填入（逗号分隔）。"
+                  },
+                  "history": {
+                    "type": "string",
+                    "description": "可选。当用户随图说明了既往病史或光凝史时直接填入（逗号分隔）。"
                   }
                 }
               }
@@ -339,7 +351,7 @@
         "properties": {
           "assessment_id": {
             "type": "string",
-            "description": "目标评估 ID；不知道时省略，默认绑定最近一次检查。"
+            "description": "强烈建议必填：目标检查的 assessment_id（即对应图片 screen_fundus 返回的 request_id），多图会话时必须明确指定以避免写错到另一张图。"
           },
           "session_id": {
             "type": "string",
