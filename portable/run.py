@@ -19,7 +19,9 @@ def service_settings(device):
     from inference.settings import Settings
 
     return Settings(registry=ROOT / "portable/models.json", weights_root=ROOT,
-                    research_root=ROOT, device=device, precision="auto",
+                    research_root=ROOT,
+                    workflow_db=ROOT / "inference_runtime/clinical_workflow.sqlite3",
+                    device=device, precision="auto",
                     cpu_threads=min(8, os.cpu_count() or 1))
 
 

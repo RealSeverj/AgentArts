@@ -16,8 +16,14 @@ from fastapi.security import APIKeyHeader
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 
-from inference.image_io import InputImageError, URLFetchPolicy, fetch_and_decode_image
 from inference.clinical_review import build_clinical_review
+from inference.clinical_workflow import (
+    CareEvaluateRequest,
+    ClinicalWorkflowStore,
+    CompareRequest,
+    IntakeRequest,
+)
+from inference.image_io import InputImageError, URLFetchPolicy, fetch_and_decode_image
 from inference.schemas import FundusResponse, ScreenRequest, failure_response
 from inference.settings import Settings
 
@@ -85,6 +91,7 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
     if origin:
         from inference.visual_delivery import VisualDelivery
         delivery = VisualDelivery(origin)
+    workflow = ClinicalWorkflowStore(settings.workflow_db)
 
     async def expire_views():
         while True:
@@ -123,6 +130,7 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
             if cleaner is not None:
                 cleaner.cancel()
                 await asyncio.gather(cleaner, return_exceptions=True)
+            workflow.close()
             app.state.engine = None
 
     app = FastAPI(title="Retinal screening inference", version="0.1.0", lifespan=lifespan,
@@ -159,6 +167,10 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                            request_id(request), type(error.body).__name__,
                            isinstance(error.body, dict) and "image_url" in error.body,
                            sorted({issue["type"] for issue in error.errors()}))
+        if request.url.path != "/v1/screen_fundus":
+            return safe_json({"ok": False, "data": None,
+                              "error": {"code": "invalid_request", "message": "请求参数校验失败，请检查字段名、类型或长度限制。"},
+                              "request_id": request_id(request)}, 422)
         return safe_json(failure_response("input_error", "请求参数无效；仅接受 image_url 字段。",
                                         request_id(request), reason="invalid_request"), 422)
 
@@ -216,6 +228,8 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
             if response.get("report_summary") is not None:
                 response["report_summary"]["clinical_review"] = build_clinical_review(
                     response, response.get("visual_report"))
+            if response["status"] in {"ok", "partial", "quality_rejected"}:
+                workflow.record_screening(response)
             status_code = {"tool_unavailable": 503, "error": 500}.get(response["status"], 200)
             return safe_json(response, status_code)
         except InputImageError as error:
@@ -246,5 +260,64 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                     decoded.image.close()
             finally:
                 gate.release()
+
+    @app.get("/v1/context", operation_id="get_context", tags=["workflow"])
+    def get_context(request: Request, session_id: str = "default", key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        data = workflow.get_context(session_id=session_id)
+        return safe_json({"ok": True, "data": data, "error": None, "request_id": rid}, 200)
+
+    @app.get("/v1/assessments/{assessment_id}", operation_id="get_assessment", tags=["workflow"])
+    def get_assessment(assessment_id: str, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        record = workflow.get_assessment(assessment_id)
+        if record is None:
+            return safe_json({"ok": False, "data": None,
+                              "error": {"code": "assessment_not_found", "message": "未找到对应的筛查评估记录。"},
+                              "request_id": rid}, 404)
+        return safe_json({"ok": True, "data": record, "error": None, "request_id": rid}, 200)
+
+    @app.post("/v1/intake", operation_id="record_intake", tags=["workflow"])
+    def record_intake(body: IntakeRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        try:
+            data = workflow.record_intake(body)
+        except KeyError:
+            return safe_json({"ok": False, "data": None,
+                              "error": {"code": "assessment_not_found", "message": "未找到对应的筛查评估记录，请先上传眼底图完成筛查。"},
+                              "request_id": rid}, 404)
+        return safe_json({"ok": True, "data": data, "error": None, "request_id": rid}, 200)
+
+    @app.post("/v1/care/evaluate", operation_id="evaluate_care", tags=["workflow"])
+    def evaluate_care(body: CareEvaluateRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        try:
+            plan = workflow.evaluate_care(body)
+        except KeyError:
+            return safe_json({"ok": False, "data": None,
+                              "error": {"code": "assessment_not_found", "message": "未找到对应的筛查评估记录，请先上传眼底图完成筛查。"},
+                              "request_id": rid}, 404)
+        return safe_json({"ok": True, "data": plan, "error": None, "request_id": rid}, 200)
+
+    @app.post("/v1/comparisons", operation_id="compare_assessments", tags=["workflow"])
+    def compare_assessments(body: CompareRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        try:
+            result = workflow.compare_assessments(body)
+        except KeyError:
+            return safe_json({"ok": False, "data": None,
+                              "error": {"code": "assessment_not_found", "message": "至少有一条评估记录不存在，无法进行对比。"},
+                              "request_id": rid}, 404)
+        return safe_json({"ok": True, "data": result, "error": None, "request_id": rid}, 200)
 
     return app

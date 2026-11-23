@@ -1,0 +1,523 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Retina Screening & Follow-up Multi-Tool API",
+    "version": "1.0.0",
+    "description": "眼底多模型辅助筛查、证据上下文读取、症状问询记录、确定性随访规则评估与同眼历史对比接口。"
+  },
+  "servers": [
+    {
+      "url": "https://fundus.example.invalid",
+      "description": "眼底筛查推理与随访业务服务公网 HTTPS 根地址。"
+    }
+  ],
+  "paths": {
+    "/v1/screen_fundus": {
+      "post": {
+        "operationId": "screen_fundus",
+        "summary": "六模型眼底筛查与四类病灶定位",
+        "description": "对一张眼底照片执行图像质量预检、五标签筛查、糖网专病五级分期、视盘视杯分割、十一标签筛查、青光眼筛查与病灶分割定位，并自动将本次检查证据（以 request_id 作为 assessment_id）持久化保存。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "image_url"
+                ],
+                "properties": {
+                  "image_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 8192,
+                    "description": "可公网访问的 HTTPS JPEG/PNG/WebP 眼底照片地址（支持签名附件链接）。"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "返回质控、分期、多标签得分、临床阅片摘要和双图链接；request_id 即为后续调用所需的 assessment_id。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API Key 鉴权失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "输入参数或图像地址无效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/context": {
+      "get": {
+        "operationId": "get_context",
+        "summary": "获取当前检查会话上下文",
+        "description": "读取当前会话绑定的最新 assessment_id、眼别、糖网分期、就医优先级、缺失信息及最近5次检查列表，用于多轮追问或切换检查。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default"
+            },
+            "description": "会话标识，默认 default。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回当前会话上下文与活跃检查摘要。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assessments/{assessment_id}": {
+      "get": {
+        "operationId": "get_assessment",
+        "summary": "读取冻结的检查证据快照",
+        "description": "按 assessment_id 读取结构化 EvidencePacket（含质控状态、DR分期、17项筛查输出、病灶定位、双图链接与已确认问询信息）以及最近一次随访计划。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assessment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "筛查返回的 request_id / assessment_id。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回完整的 EvidencePacket 与关联随访计划。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到对应的评估记录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intake": {
+      "post": {
+        "operationId": "record_intake",
+        "summary": "记录受检者眼别、症状与既往病史",
+        "description": "保存或追加用户提供的左右眼别（left/right/unknown）、当前症状（含突发飞蚊/闪光/幕帘遮挡等）、起病时间、既往病史（如糖尿病、既往激光光凝史）和已确认医嘱。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "问询信息已保存，并返回更新后的修订版本号与优先级预览。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到对应的评估记录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/care/evaluate": {
+      "post": {
+        "operationId": "evaluate_care",
+        "summary": "执行确定性症状优先规则并生成随访计划",
+        "description": "综合当前检查证据与用户症状病史，执行紧急症状优先检查与分层随访规则，生成并保存带 rule_ids、source_ids、缺失项和待追问问题的结构化随访计划。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CareEvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "返回已持久化的结构化随访计划（plan_id、care_priority、actions、followup_time、questions_to_confirm 等）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到对应的评估记录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/comparisons": {
+      "post": {
+        "operationId": "compare_assessments",
+        "summary": "同眼两次检查历史对比",
+        "description": "先核验两次检查是否为明确的同一眼别（两个 unknown 不可比较）、图像质控是否合格及模型版本是否一致，再输出糖网分期变化与标签筛查线差异。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "返回可比性结论及同方法下的模型输出差异。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "至少一条评估记录不存在。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "RetinaApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "StageResult": {
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "model_id",
+          "weights_sha256",
+          "preprocessing_version",
+          "elapsed_ms",
+          "output"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "not_run",
+              "error"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "model_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "weights_sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "preprocessing_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "nullable": true
+          },
+          "output": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
+      "FundusResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "contract_version",
+          "request_id",
+          "status",
+          "message",
+          "results",
+          "warnings"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "image_sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_utc": {
+            "type": "string",
+            "nullable": true
+          },
+          "results": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "research_results": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "report_summary": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "visual_report": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "IntakeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "目标评估 ID；为空时绑定当前会话最近一次检查。"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "default",
+            "description": "会话标识，默认 default。"
+          },
+          "eye": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "unknown"
+            ],
+            "nullable": true,
+            "description": "眼别：left（左眼）、right（右眼）或 unknown（暂不明确）。"
+          },
+          "symptoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "患者自述症状列表，如 [\"突发大量飞蚊\", \"闪光感\"] 或 [\"无明显不适\"]。"
+          },
+          "symptom_onset": {
+            "type": "string",
+            "nullable": true,
+            "description": "症状起始时间，如 \"2天前\"。"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "既往病史或治疗史，如 [\"2型糖尿病8年\", \"2024年右眼激光光凝\"]。"
+          },
+          "confirmed_plan": {
+            "type": "string",
+            "nullable": true,
+            "description": "患者已从线下医生处获得的既有复查安排。"
+          }
+        }
+      },
+      "CareEvaluateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "目标评估 ID；为空时使用当前会话最近一次检查。"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "default",
+            "description": "会话标识，默认 default。"
+          }
+        }
+      },
+      "CompareRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previous_assessment_id",
+          "current_assessment_id"
+        ],
+        "properties": {
+          "previous_assessment_id": {
+            "type": "string",
+            "description": "较早一次检查的 assessment_id。"
+          },
+          "current_assessment_id": {
+            "type": "string",
+            "description": "本次或较新一次检查的 assessment_id。"
+          }
+        }
+      },
+      "WorkflowEnvelope": {
+        "type": "object",
+        "required": [
+          "ok",
+          "data",
+          "error",
+          "request_id"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "error": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
