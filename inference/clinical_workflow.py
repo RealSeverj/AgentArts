@@ -686,10 +686,13 @@ class ClinicalWorkflowStore:
                 ),
             )
             conn.commit()
+            visual = evidence.get("visual_report") or {}
             return {
                 "assessment_id": assessment_id,
                 "intake_revision": revision,
                 "intake": intake,
+                "visual_report": visual,
+                "report_url": visual.get("report_url"),
                 "care_preview": {
                     "care_priority": care["care_priority"],
                     "priority_label": care["priority_label"],
@@ -718,6 +721,7 @@ class ClinicalWorkflowStore:
             plan_id = f"plan_{uuid.uuid4().hex[:12]}"
             now = _utc_now()
 
+            visual = evidence.get("visual_report") or {}
             plan_record = {
                 "plan_id": plan_id,
                 "assessment_id": assessment_id,
@@ -725,6 +729,8 @@ class ClinicalWorkflowStore:
                 "intake_revision": row["intake_revision"],
                 "eye": intake["eye"],
                 "created_utc": now,
+                "visual_report": visual,
+                "report_url": visual.get("report_url"),
                 **care,
             }
             conn.execute(

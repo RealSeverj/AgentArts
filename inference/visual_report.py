@@ -1,4 +1,4 @@
-"""Render a same-view image pair from spatial evidence tied to this request."""
+"""Render an interactive, printable A4 report and same-view image pair."""
 from __future__ import annotations
 
 import base64
@@ -22,6 +22,17 @@ REFERENCE_FOLDER = Path(__file__).resolve().parent / "reference_cases" / "idrid_
 LESIONS = {"MA": ("微动脉瘤", "#53E8FF", 1), "HE": ("视网膜出血", "#FF7397", 2),
            "EX": ("硬性渗出", "#FFD64D", 4), "SE": ("软性渗出（棉絮斑）", "#74F49A", 8)}
 ANATOMY = {"optic_disc": ("视盘", "#8edbd8"), "optic_cup": ("视杯", "#d5d9f2")}
+
+EYE_LABELS = {"left": "左眼（OS）", "right": "右眼（OD）", "unknown": "眼别待确认"}
+PRIORITY_BADGE = {
+    "urgent_ophthalmology": ("badge-urgent", "建议立即眼科急诊评估"),
+    "prompt_ophthalmology": ("badge-prompt", "建议尽快眼底专科就诊"),
+    "scheduled_ophthalmology": ("badge-warn", "建议限期眼科专科复核"),
+    "routine_followup": ("badge-info", "建议常规眼科随访"),
+    "annual_screening": ("badge-ok", "建议定期常规复查"),
+    "retake_image": ("badge-warn", "图像质量不足，建议重拍"),
+}
+DR_STAGE_SHORT = ("0级 无明显病变", "1级 轻度", "2级 中度", "3级 重度", "4级 增殖期")
 
 
 def _reference_masks(sha, size):
@@ -155,41 +166,278 @@ def _score_rows(response):
     return "".join(rows)
 
 
-def _report_html(info, response, has_overlay):
+def _dr_scale_html(response):
+    summary = response.get("report_summary") or {}
+    dr = summary.get("dr_severity") or {}
+    grade = dr.get("grade") if dr.get("status") == "completed" else None
+    if type(grade) is not int or not 0 <= grade <= 4:
+        return ""
+    cells = []
+    for idx, label in enumerate(DR_STAGE_SHORT):
+        cls = "scale-step active" if idx == grade else "scale-step"
+        cells.append(f'<div class="{cls}"><span class="step-num">{idx}</span><span>{escape(label)}</span></div>')
+    return '<div class="dr-scale" aria-label="糖网五级分期位置">' + "".join(cells) + "</div>"
+
+
+def _resolve_care_and_intake(response, assessment_record):
+    if assessment_record is not None:
+        evidence = assessment_record.get("evidence_packet") or {}
+        intake = evidence.get("intake") or {}
+        plan = assessment_record.get("latest_care_plan")
+        if plan is not None:
+            return intake, plan, True
+    else:
+        intake = {"eye": "unknown", "symptoms": [], "symptom_onset": None,
+                  "history": [], "confirmed_plan": None, "revision": 1}
+    from inference.clinical_workflow import evaluate_care_rules
+    return intake, evaluate_care_rules(response, intake), False
+
+
+def _care_section_html(intake, care, has_saved_plan):
+    priority_code = care.get("care_priority") or "annual_screening"
+    badge_cls, default_label = PRIORITY_BADGE.get(priority_code, ("badge-info", "常规随访"))
+    priority_label = care.get("priority_label") or default_label
+    eye_text = EYE_LABELS.get(intake.get("eye") or "unknown", "眼别待确认")
+    symptoms_text = "、".join(intake.get("symptoms") or []) or "尚未补充（请在对话中告知有无视力下降、飞蚊或闪光感）"
+    history_text = "、".join(intake.get("history") or []) or "尚未补充"
+    onset_text = intake.get("symptom_onset") or "未提供"
+    confirmed_plan = intake.get("confirmed_plan") or "无既有线下医嘱记录"
+    revision = intake.get("revision") or 1
+
+    def _li(items):
+        if not items:
+            return "<li>暂无额外条目</li>"
+        return "".join("<li>" + escape(str(x)) + "</li>" for x in items)
+
+    confirm_html = ""
+    pending = care.get("questions_to_confirm") or []
+    if pending:
+        confirm_html = (
+            '<div class="subcard subcard-muted"><h3>建议补充确认的问题</h3><ul>'
+            + _li(pending)
+            + "</ul></div>"
+        )
+
+    plan_tag = f"随访计划 v{escape(str(care.get('version', 1)))}" if has_saved_plan else "初步规则参考（待补充信息）"
+    rule_refs = " / ".join([*(care.get("rule_ids") or []), *(care.get("references") or [])]) or "标准规则"
+    card_cls = "card care-card urgent-border" if priority_code == "urgent_ophthalmology" else "card care-card"
+
+    return (
+        f'<section class="{card_cls}">'
+        '<div class="section-head">'
+        '<h2>受检者信息与个体化随访计划</h2>'
+        f'<span class="pill {badge_cls}">{escape(priority_label)}</span>'
+        "</div>"
+        '<div class="meta-grid">'
+        f'<div><span class="meta-k">检查眼别</span><span class="meta-v">{escape(eye_text)}</span></div>'
+        f'<div><span class="meta-k">问询状态</span><span class="meta-v">{escape(plan_tag)}（信息修订 v{escape(str(revision))}）</span></div>'
+        f'<div><span class="meta-k">自述症状</span><span class="meta-v">{escape(symptoms_text)}</span></div>'
+        f'<div><span class="meta-k">起病时间</span><span class="meta-v">{escape(onset_text)}</span></div>'
+        f'<div><span class="meta-k">既往病史</span><span class="meta-v">{escape(history_text)}</span></div>'
+        f'<div><span class="meta-k">既往医嘱</span><span class="meta-v">{escape(confirmed_plan)}</span></div>'
+        "</div>"
+        '<div class="followup-banner">'
+        f'<div><strong>建议复查窗口：</strong>{escape(str(care.get("followup_time") or "请遵医嘱"))}</div>'
+        f'<div class="basis"><strong>优先级依据：</strong>{escape(str(care.get("priority_basis") or ""))}'
+        f' <span class="code-tag">[{escape(rule_refs)}]</span></div>'
+        "</div>"
+        '<div class="care-columns">'
+        f'<div class="subcard"><h3>下一步行动建议</h3><ul>{_li(care.get("actions"))}</ul></div>'
+        f'<div class="subcard"><h3>居家监测事项</h3><ul>{_li(care.get("monitoring_items"))}</ul></div>'
+        f'<div class="subcard"><h3>建议向接诊医生提问</h3><ul>{_li(care.get("questions_for_clinician"))}</ul></div>'
+        f"{confirm_html}"
+        "</div>"
+        "</section>"
+    )
+
+
+def _report_html(info, response, has_overlay, *, assessment_record=None):
     review = build_clinical_review(response, info)
+    intake, care, has_saved_plan = _resolve_care_and_intake(response, assessment_record)
     rows = _score_rows(response)
     tasks = "".join("<li><strong>" + escape(item["topic"]) + "</strong>　" + escape(item["action"]) +
                     ("<div class='basis'>" + escape(item["basis"]) + "</div>" if item["basis"] else "") +
                     "</li>" for item in review["review_items"])
-    review_block = "<section><h2>阅片意见</h2><ol>" + tasks + "</ol></section>" if tasks else ""
+    review_block = "<section class='card'><h2>阅片意见</h2><ol>" + tasks + "</ol></section>" if tasks else ""
     other = "".join("<p>" + escape(line) + "</p>" for line in review["other_results"])
     caption = {"expert_reference": "病灶标注图（专家参考）", "model_candidates": "病灶候选区（模型预测）",
                "anatomy": "视盘视杯结构图", "no_candidates": "本次未检出可标注候选区",
                "unavailable": "本次无法定位"}[info["kind"]]
-    right = '<a href="overlay.jpg"><img src="overlay.jpg" alt="' + caption + '"></a>' if has_overlay else ""
+    right = '<a href="overlay.jpg" target="_blank" rel="noreferrer"><img src="overlay.jpg" alt="' + caption + '"></a>' if has_overlay else ""
     keys = "".join('<span><i style="background:' + x["color"] + '"></i>' + escape(x["name"]) + '</span>'
                    for x in info["legend"])
     credit = ""
     if info.get("reference_grade") is not None and response.get("image_sha256") == REFERENCE_SHA:
         origin = "右图叠加了公开像素标注。" if info["kind"] == "expert_reference" else "右图显示本次模型运行结果。"
-        credit = ('<p>案例来源：<a rel="noreferrer" href="https://doi.org/10.21227/H25W98">IDRiD</a>，分割图 IDRiD_03 与分级图 IDRiD_369 同源同图。'
+        credit = ('<p class="credit">案例来源：<a rel="noreferrer" href="https://doi.org/10.21227/H25W98">IDRiD</a>，分割图 IDRiD_03 与分级图 IDRiD_369 同源同图。'
                   '© Prasanna Porwal、Samiksha Pachade、Manesh Kokare，<a rel="noreferrer" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>。'
                   + origin + '</p>')
+
+    assessment_id = escape(str(response.get("request_id") or "本地离线报告"))
+    created_utc = escape(str(response.get("created_utc") or "即时生成")[:19].replace("T", " "))
+    eye_badge = escape(EYE_LABELS.get(intake.get("eye") or "unknown", "眼别待确认"))
+    priority_code = care.get("care_priority") or "annual_screening"
+    priority_cls, priority_default = PRIORITY_BADGE.get(priority_code, ("badge-info", "常规随访"))
+    priority_text = escape(str(care.get("priority_label") or priority_default))
+    dr_scale = _dr_scale_html(response)
+    care_section = _care_section_html(intake, care, has_saved_plan)
+
     return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>眼底影像辅助阅片报告</title><style>
-*{{box-sizing:border-box}}body{{font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif;color:#193941;max-width:1180px;padding:24px;margin:auto}}
-h1{{font-size:28px}}h2{{font-size:20px}}main{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}figure{{margin:0;min-width:0}}
-.basis{{color:#425861;font-size:.94em}}li{{margin-bottom:.55em}}ol{{padding-inline-start:1.5em}}.primary{{font-size:1.12em}}
-img{{width:100%;height:auto;display:block;background:#161a1c}}figcaption{{font-weight:650;margin-bottom:5px}}.key span{{display:inline-block;margin:0 1em .25em 0}}
-i{{display:inline-block;width:15px;height:15px;vertical-align:-2px;margin-right:6px;border:1px solid #687e80}}.scroll{{overflow:auto}}
-td,th{{text-align:left;border-bottom:1px solid #d6dfdf;padding:5px 14px 5px 0}}td{{font-variant-numeric:tabular-nums}}
-@media(max-width:680px){{main{{grid-template-columns:1fr}}body{{padding:14px}}}}</style>
-<h1>眼底影像辅助阅片报告</h1><p>{escape(review["quality"])}</p><h2>主要判读</h2><p class="primary">{escape(review["primary"])}</p>{review_block}
-<main><figure><figcaption>原图（完整视野）</figcaption><a href="original.jpg"><img src="original.jpg" alt="本次眼底原图"></a></figure>
-<figure><figcaption>{caption}</figcaption>{right}<div class="key">{keys}</div></figure></main>
-<p><strong>{escape(info["source_label"])}</strong><br>{escape(info["note"])}</p>{credit}<h2>其余结果</h2>{other}<p>{escape(review["scope"])}</p>
-<details><summary>查看逐项模型得分和研究筛查线</summary><div class="scroll"><table><thead><tr><th>项目</th><th>模型</th><th>得分</th><th>研究线</th><th>比较结果</th></tr></thead>
-<tbody>{rows}</tbody></table></div></details></html>"""
+<meta name="referrer" content="no-referrer"><title>眼底影像智能筛查与随访报告</title><style>
+@page{{size:A4 portrait;margin:12mm 11mm}}
+*{{box-sizing:border-box}}
+body{{font:15px/1.65 system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;color:#14282e;background:#f4f7f8;margin:0;padding:20px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.page{{max-width:1100px;margin:0 auto}}
+.toolbar{{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;background:#ffffff;border:1px solid #d5e0e2;border-radius:10px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,41,48,.05)}}
+.toolbar-meta{{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:#415a61}}
+.toolbar-actions{{display:flex;flex-wrap:wrap;gap:8px}}
+button.btn{{border:1px solid #155e75;background:#155e75;color:#ffffff;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}}
+button.btn-secondary{{background:#ffffff;color:#155e75}}
+button.btn:hover{{opacity:.92}}
+.report-header{{background:#ffffff;border:1px solid #d5e0e2;border-top:4px solid #155e75;border-radius:10px;padding:18px 22px;margin-bottom:16px}}
+.header-top{{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px}}
+h1{{font-size:24px;margin:0 0 6px;color:#0f2930;letter-spacing:.3px}}
+h2{{font-size:17px;margin:0 0 10px;color:#0f2930;border-left:3px solid #155e75;padding-left:9px}}
+h3{{font-size:14px;margin:0 0 6px;color:#155e75}}
+.header-sub{{font-size:13px;color:#4a6369;display:flex;flex-wrap:wrap;gap:14px}}
+.pill{{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent}}
+.badge-urgent{{background:#fef2f2;color:#991b1b;border-color:#fca5a5}}
+.badge-prompt{{background:#fff7ed;color:#9a3412;border-color:#fdba74}}
+.badge-warn{{background:#fefce8;color:#854d0e;border-color:#fde047}}
+.badge-info{{background:#ecfeff;color:#155e75;border-color:#a5f3fc}}
+.badge-ok{{background:#f0fdf4;color:#166534;border-color:#86efac}}
+.card{{background:#ffffff;border:1px solid #d5e0e2;border-radius:10px;padding:16px 20px;margin-bottom:14px}}
+.care-card.urgent-border{{border-left:4px solid #b91c1c}}
+.section-head{{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}}
+.primary{{font-size:16px;font-weight:500;color:#0f2930;margin:6px 0 10px}}
+.quality-line{{margin:0 0 8px;color:#375158;font-size:14px}}
+.dr-scale{{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}}
+.scale-step{{background:#f8fafb;border:1px solid #dbe4e6;border-radius:6px;padding:6px 8px;font-size:12px;color:#52686e;display:flex;align-items:center;gap:6px}}
+.scale-step .step-num{{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#e2ecee;color:#14282e;font-weight:700;font-size:11px;flex-shrink:0}}
+.scale-step.active{{background:#ecfeff;border-color:#155e75;color:#0f2930;font-weight:700}}
+.scale-step.active .step-num{{background:#155e75;color:#ffffff}}
+.image-grid{{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
+.image-grid.single-col{{grid-template-columns:1fr}}
+figure{{margin:0;min-width:0;background:#fafcfd;border:1px solid #e1eaec;border-radius:8px;padding:10px}}
+img{{width:100%;height:auto;display:block;background:#161a1c;border-radius:4px}}
+figcaption{{font-weight:650;margin-bottom:6px;font-size:14px;color:#0f2930}}
+.key{{margin-top:8px;font-size:13px}}
+.key span{{display:inline-block;margin:0 12px 4px 0}}
+i{{display:inline-block;width:13px;height:13px;vertical-align:-2px;margin-right:5px;border:1px solid #687e80;border-radius:2px}}
+.meta-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;background:#f8fafb;border:1px solid #e3ecef;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px}}
+.meta-k{{color:#587077;margin-right:6px}}
+.meta-v{{color:#0f2930;font-weight:500}}
+.followup-banner{{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px}}
+.care-columns{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}}
+.subcard{{background:#f9fbfb;border:1px solid #e2ebed;border-radius:8px;padding:10px 12px;font-size:13.5px}}
+.subcard-muted{{background:#fffbeb;border-color:#fde68a}}
+.subcard ul{{margin:0;padding-inline-start:18px}}
+.subcard li{{margin-bottom:4px}}
+.code-tag{{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#415a61}}
+.basis{{color:#425861;font-size:13px;margin-top:3px}}
+ol{{padding-inline-start:1.4em;margin:0}}
+li{{margin-bottom:6px}}
+.note-line{{font-size:13.5px;color:#344d54;margin:10px 0 0}}
+.credit{{font-size:12.5px;color:#52686e;margin:6px 0 0}}
+.scope-note{{font-size:13px;color:#4a6369;border-top:1px dashed #d5e0e2;padding-top:8px;margin-top:8px}}
+details summary{{cursor:pointer;font-weight:600;color:#155e75;padding:4px 0}}
+.scroll{{overflow:auto;margin-top:8px}}
+table{{width:100%;border-collapse:collapse;font-size:13px}}
+td,th{{text-align:left;border-bottom:1px solid #dbe4e6;padding:6px 10px 6px 0}}
+th{{color:#0f2930;background:#f8fafb}}
+td{{font-variant-numeric:tabular-nums}}
+@media(max-width:720px){{
+  .image-grid,.meta-grid,.dr-scale{{grid-template-columns:1fr}}
+  body{{padding:10px}}
+}}
+@media print{{
+  body{{background:#ffffff;padding:0;font-size:12.5px;line-height:1.5}}
+  .no-print{{display:none !important}}
+  .card,.report-header,figure,.subcard,.followup-banner{{box-shadow:none;break-inside:avoid}}
+  .image-grid{{grid-template-columns:1fr 1fr !important}}
+  details#tech-details{{display:block}}
+  details#tech-details > summary{{list-style:none;margin-bottom:4px}}
+  table tr{{break-inside:avoid}}
+}}
+</style>
+<div class="page">
+  <div class="toolbar no-print">
+    <div class="toolbar-meta">
+      <span><strong>报告编号：</strong><span class="code-tag">{assessment_id}</span></span>
+      <span><strong>眼别：</strong>{eye_badge}</span>
+      <span class="pill {priority_cls}">{priority_text}</span>
+    </div>
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-secondary" onclick="toggleImageLayout()">切换单图大图 / 双图对照</button>
+      <button type="button" class="btn" onclick="exportPdf()">导出 / 打印 PDF 报告</button>
+    </div>
+  </div>
+
+  <header class="report-header">
+    <div class="header-top">
+      <div>
+        <h1>眼底影像智能筛查与随访报告</h1>
+        <div class="header-sub">
+          <span>检查时间：{created_utc} (UTC)</span>
+          <span>眼别归属：{eye_badge}</span>
+          <span>报告编号：{assessment_id}</span>
+        </div>
+      </div>
+      <span class="pill {priority_cls}">{priority_text}</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>主要判读</h2>
+    <p class="quality-line"><strong>图像质控：</strong>{escape(review["quality"])}</p>
+    <p class="primary">{escape(review["primary"])}</p>
+    {dr_scale}
+  </section>
+
+  <section class="card">
+    <h2>眼底双图可视化对照</h2>
+    <main id="image-grid" class="image-grid">
+      <figure><figcaption>原图（完整视野）</figcaption><a href="original.jpg" target="_blank" rel="noreferrer"><img src="original.jpg" alt="本次眼底原图"></a></figure>
+      <figure><figcaption>{caption}</figcaption>{right}<div class="key">{keys}</div></figure>
+    </main>
+    <p class="note-line"><strong>{escape(info["source_label"])}：</strong>{escape(info["note"])}</p>
+    {credit}
+  </section>
+
+  {care_section}
+  {review_block}
+
+  <section class="card">
+    <h2>其余结果与适用范围</h2>
+    {other}
+    <p class="scope-note">{escape(review["scope"])} 临床诊断与治疗决策需由执业眼科医生结合完整专科检查完成。</p>
+  </section>
+
+  <section class="card">
+    <h2>专业技术附录</h2>
+    <details id="tech-details">
+      <summary>查看逐项模型得分和研究筛查线（导出 PDF 时将自动完整展开）</summary>
+      <div class="scroll"><table><thead><tr><th>项目</th><th>模型</th><th>得分</th><th>研究线</th><th>比较结果</th></tr></thead>
+      <tbody>{rows}</tbody></table></div>
+    </details>
+  </section>
+</div>
+<script>
+function exportPdf() {{
+  var d = document.getElementById('tech-details');
+  var wasOpen = d ? d.open : false;
+  if (d) d.open = true;
+  window.print();
+  if (d && !wasOpen) {{
+    setTimeout(function() {{ d.open = false; }}, 400);
+  }}
+}}
+function toggleImageLayout() {{
+  var grid = document.getElementById('image-grid');
+  if (grid) grid.classList.toggle('single-col');
+}}
+</script>
+</html>"""
 
 
 def write_visual_report(image, response, image_sha256, artifact_root, request_id, *, url_prefix=None):

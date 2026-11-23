@@ -151,12 +151,17 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
     @app.get("/v1/view/{token}/{name}", include_in_schema=False)
     def view(token: str, name: str):
         from inference.visual_delivery import MEDIA
-        payload = delivery.read(token, name) if delivery else None
+        assessment_record = None
+        if delivery is not None and name == "report.html":
+            linked_id = delivery.get_request_id(token)
+            if linked_id:
+                assessment_record = workflow.get_assessment(linked_id)
+        payload = delivery.read(token, name, assessment_record=assessment_record) if delivery else None
         if payload is None:
             return Response(status_code=404)
         headers = {"Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
                    "X-Robots-Tag": "noindex, nofollow, noarchive",
-                   "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"}
+                   "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"}
         return Response(payload, media_type=MEDIA[name], headers=headers)
 
     @app.exception_handler(RequestValidationError)

@@ -19,7 +19,9 @@ class VisualReportTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.image = Image.new("RGB", (180, 100), (80, 50, 40))
         self.response = {"results": {"quality": {"status": "completed", "output": {"predicted_label": "Good"}}}}
-        self.pred = self.enterContext(patch("inference.visual_report._predict_masks", return_value=None))
+        patcher = patch("inference.visual_report._predict_masks", return_value=None)
+        self.pred = patcher.start()
+        self.addCleanup(patcher.stop)
 
     def render(self, request="check", **kwargs):
         return write_visual_report(self.image, self.response, "a"*64, self.root, request, **kwargs)

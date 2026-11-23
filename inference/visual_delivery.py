@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from copy import deepcopy
 from pathlib import Path
 import secrets
 from tempfile import TemporaryDirectory
@@ -29,7 +30,7 @@ class VisualDelivery:
         self.lock = threading.Lock()
 
     def _remove_oldest(self):
-        _, (_, _, size) = self.entries.popitem(last=False)
+        _, (_, _, size, _) = self.entries.popitem(last=False)
         self.total_bytes -= size
 
     def _expire(self):
@@ -56,19 +57,43 @@ class VisualDelivery:
         size = sum(map(len, files.values()))
         if size > self.max_bytes:
             raise ValueError("Rendered report exceeds the delivery budget")
+        meta = {
+            "request_id": request_id,
+            "info": deepcopy(result),
+            "screening": deepcopy(screening),
+            "has_overlay": "overlay.jpg" in files,
+        }
         with self.lock:
             self._expire()
             while self.entries and (self.total_bytes + size > self.max_bytes or len(self.entries) >= 48):
                 self._remove_oldest()
-            self.entries[token] = (self.clock() + TTL_SECONDS, files, size)
+            self.entries[token] = (self.clock() + TTL_SECONDS, files, size, meta)
             self.total_bytes += size
         result["expires_in_seconds"] = TTL_SECONDS
         return result
 
-    def read(self, token, name):
+    def get_request_id(self, token):
+        if len(token) != 43:
+            return None
+        with self.lock:
+            self._expire()
+            item = self.entries.get(token)
+            return item[3]["request_id"] if item else None
+
+    def read(self, token, name, *, assessment_record=None):
         if name not in MEDIA or len(token) != 43:
             return None
         with self.lock:
             self._expire()
             item = self.entries.get(token)
-            return item[1].get(name) if item else None
+            if not item:
+                return None
+            files = item[1]
+            meta = item[3]
+        if name == "report.html" and assessment_record is not None:
+            from inference.visual_report import _report_html
+
+            return _report_html(
+                meta["info"], meta["screening"], meta["has_overlay"], assessment_record=assessment_record
+            ).encode("utf-8")
+        return files.get(name)

@@ -283,6 +283,38 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertFalse(cmp_rej["comparable"])
             self.assertEqual(cmp_rej["reason"], "quality_not_comparable")
 
+    def test_dynamic_report_syncs_latest_care_plan_and_pdf_print_styles(self):
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
+        with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
+            screen = client.post("/v1/screen_fundus", json={"image_url": URL}, headers=HEADERS)
+            self.assertEqual(screen.status_code, 200)
+            payload = screen.json()
+            report_url = payload["visual_report"]["report_url"]
+            self.assertTrue(report_url.startswith("https://severj.top/v1/view/"))
+            view_path = "/" + report_url.split("https://severj.top/", 1)[1]
+
+            initial_html = client.get(view_path)
+            self.assertEqual(initial_html.status_code, 200)
+            self.assertIn("导出 / 打印 PDF 报告", initial_html.text)
+            self.assertIn("@media print", initial_html.text)
+            self.assertIn("眼别待确认", initial_html.text)
+
+            client.post(
+                "/v1/intake",
+                json={"assessment_id": payload["request_id"], "eye": "left", "symptoms": "突发大量飞蚊"},
+                headers=HEADERS,
+            )
+            care = client.post("/v1/care/evaluate", json={"assessment_id": payload["request_id"]}, headers=HEADERS)
+            self.assertEqual(care.status_code, 200)
+            self.assertEqual(care.json()["data"]["report_url"], report_url)
+
+            updated_html = client.get(view_path)
+            self.assertEqual(updated_html.status_code, 200)
+            self.assertIn("左眼（OS）", updated_html.text)
+            self.assertIn("突发大量飞蚊", updated_html.text)
+            self.assertIn("立即眼科急诊评估", updated_html.text)
+            self.assertIn("随访计划 v1", updated_html.text)
+
 
 if __name__ == "__main__":
     unittest.main()
