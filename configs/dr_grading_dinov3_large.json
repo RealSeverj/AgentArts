@@ -1,0 +1,74 @@
+{
+  "seed": 20261113,
+  "task": "dr_grading",
+  "kind": "multiclass",
+  "labels": [
+    "dr_grade"
+  ],
+  "num_classes": 5,
+  "data": {
+    "protocol": "strict_cross_domain"
+  },
+  "model": {
+    "name": "vit_large_patch16_dinov3.lvd1689m",
+    "pretrained": true,
+    "img_size": 384,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": true
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 10,
+    "color_jitter": 0.1
+  },
+  "loss": {
+    "label_smoothing": 0.05,
+    "class_weights": [
+      0.348584,
+      1.059781,
+      0.584524,
+      1.688015,
+      1.319096
+    ],
+    "weighting_note": "Fixed from this configuration training labels only; sqrt inverse frequency / sqrt negative-positive ratio capped at 10. No validation/test labels used.",
+    "training_label_counts": {
+      "dr_grade": {
+        "2": 4395,
+        "0": 12358,
+        "3": 527,
+        "4": 863,
+        "1": 1337
+      }
+    }
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 1,
+    "grad_accum_steps": 16,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 3e-05,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 2,
+    "full_finetune_epoch": 8,
+    "best_metric": "qwk",
+    "best_mode": "max",
+    "log_every": 25,
+    "unfreeze_last_n_blocks": 4
+  },
+  "notes": "DINOv3 ViT-L/16 opt-in comparison; accept applicable weight terms before downloading. Profile peak memory on each 16GB V100. Default start with DINOv2-S baseline."
+}

@@ -1,0 +1,34 @@
+# Replace the hostname and certificate paths before enabling this template.
+# Place inside nginx http{}; install/enable only after real TLS provisioning.
+upstream retina_backend {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 443 ssl;
+    server_name YOUR_REAL_HOSTNAME;
+    ssl_certificate /etc/letsencrypt/live/YOUR_REAL_HOSTNAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/YOUR_REAL_HOSTNAME/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 16k;
+    client_body_timeout 10s;
+    keepalive_timeout 15s;
+    access_log off;
+
+    location = /v1/screen_fundus {
+        proxy_pass http://retina_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-API-Key $http_x_api_key;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 60s;
+        proxy_request_buffering on;
+        proxy_intercept_errors off;
+    }
+    location = /v1/models {
+        proxy_pass http://retina_backend;
+        proxy_set_header X-API-Key $http_x_api_key;
+        proxy_read_timeout 60s;
+    }
+    location / { return 404; }
+}

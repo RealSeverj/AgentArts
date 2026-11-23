@@ -1,0 +1,6 @@
+# Install CUDA PyTorch separately; see CLOUD_TRAINING.md (V100 uses cu118).
+# V100 CUDA pair: torch==2.6.0, torchvision==0.21.0; verify on the cloud host.
+timm==1.0.22
+numpy==1.26.4
+Pillow==11.3.0
+pycocotools==2.0.10

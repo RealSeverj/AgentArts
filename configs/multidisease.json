@@ -1,0 +1,87 @@
+{
+  "seed": 20261113,
+  "task": "multidisease",
+  "kind": "multilabel",
+  "labels": [
+    "DR",
+    "AMD",
+    "MYOPIC_FUNDUS",
+    "OPTIC_DISC_CUPPING",
+    "ABNORMAL"
+  ],
+  "data": {
+    "protocol": "strict_cross_domain"
+  },
+  "model": {
+    "name": "vit_small_patch14_dinov2.lvd142m",
+    "pretrained": true,
+    "img_size": 392,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": true
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 10,
+    "color_jitter": 0.1
+  },
+  "loss": {
+    "pos_weight": [
+      2.107956,
+      4.216634,
+      4.194527,
+      2.404118,
+      0.512782
+    ],
+    "weighting_note": "Fixed from this configuration training labels only; sqrt inverse frequency / sqrt negative-positive ratio capped at 10. No validation/test labels used.",
+    "training_label_counts": {
+      "DR": {
+        "0": 1533,
+        "1": 345
+      },
+      "AMD": {
+        "0": 1778,
+        "1": 100
+      },
+      "MYOPIC_FUNDUS": {
+        "0": 1777,
+        "1": 101
+      },
+      "OPTIC_DISC_CUPPING": {
+        "0": 1601,
+        "1": 277
+      },
+      "ABNORMAL": {
+        "1": 1487,
+        "0": 391
+      }
+    }
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 4,
+    "grad_accum_steps": 4,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 0.0001,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 1,
+    "full_finetune_epoch": 1,
+    "best_metric": "macro_auprc",
+    "best_mode": "max",
+    "log_every": 25
+  }
+}

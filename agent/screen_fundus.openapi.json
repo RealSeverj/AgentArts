@@ -1,0 +1,546 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Fundus screening tool",
+    "version": "0.2.0"
+  },
+  "servers": [
+    {
+      "url": "https://fundus.example.invalid",
+      "description": "接收方的眼底推理服务公网 HTTPS 根地址。"
+    }
+  ],
+  "paths": {
+    "/v1/screen_fundus": {
+      "post": {
+        "operationId": "screen_fundus",
+        "summary": "六模型眼底筛查与研究性分析",
+        "description": "对一张眼底照片先做图像预检与质量评估。仅对可判读输入进行常规筛查、糖网专病分级、盘杯分割和两个研究模型的评分。读取本次各阶段状态，按病种输出严重程度及研究得分。",
+        "security": [
+          {
+            "RetinaApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "image_url"
+                ],
+                "properties": {
+                  "image_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 8192,
+                    "description": "Publicly reachable HTTPS JPEG/PNG/WebP image URL; signed private-object URLs are supported."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read overall status and every stage status before explaining the actual results. Unexecuted output is null. Segmentation PNG base64 is for frontend display, not language-model interpretation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "RetinaApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "StageResult": {
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "model_id",
+          "weights_sha256",
+          "preprocessing_version",
+          "elapsed_ms",
+          "output"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "not_run",
+              "error"
+            ],
+            "description": "Stage execution status: completed, not_run, or error. A skipped or failed stage is not a negative finding."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reason for skipping or failing this stage; null when no reason applies."
+          },
+          "model_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Identifier of the model used by this stage; null if unavailable."
+          },
+          "weights_sha256": {
+            "type": "string",
+            "nullable": true,
+            "description": "SHA-256 digest identifying the exact model weights; null if unavailable."
+          },
+          "preprocessing_version": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version of preprocessing actually applied by this stage; null if unavailable."
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true,
+            "description": "Measured stage execution time in milliseconds; null when the stage did not execute."
+          },
+          "output": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Actual stage-specific result, or null when the stage was not executed. Scores are uncalibrated; segmentation PNG base64 is for frontend display and must not be interpreted or repeated by the language model."
+          }
+        },
+        "description": "Execution status, provenance, elapsed time, and actual output of one versioned retinal expert."
+      },
+      "FundusResponse": {
+        "type": "object",
+        "required": [
+          "contract_version",
+          "request_id",
+          "status",
+          "message",
+          "image_sha256",
+          "created_utc",
+          "routing",
+          "results",
+          "warnings"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "description": "Version of this response contract."
+          },
+          "request_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Request identifier for tracing this screening call; null if unavailable."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "partial",
+              "quality_rejected",
+              "tool_unavailable",
+              "input_error",
+              "error"
+            ],
+            "description": "Overall service outcome. quality_rejected prevents downstream disease conclusions; partial or failed results must be described as such."
+          },
+          "message": {
+            "type": "string",
+            "description": "Service-provided explanation of the overall outcome."
+          },
+          "image_sha256": {
+            "type": "string",
+            "nullable": true,
+            "description": "SHA-256 digest of the fetched image bytes; null if the image was not available."
+          },
+          "created_utc": {
+            "type": "string",
+            "nullable": true,
+            "description": "UTC timestamp recorded for this response; null if unavailable."
+          },
+          "routing": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Routing policy and actual routing metadata; null if unavailable."
+          },
+          "results": {
+            "type": "object",
+            "required": [
+              "quality",
+              "multidisease",
+              "dr_grading",
+              "disc_cup_segmentation"
+            ],
+            "properties": {
+              "quality": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "model_id",
+                  "weights_sha256",
+                  "preprocessing_version",
+                  "elapsed_ms",
+                  "output"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "not_run",
+                      "error"
+                    ],
+                    "description": "Stage execution status: completed, not_run, or error. A skipped or failed stage is not a negative finding."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Reason for skipping or failing this stage; null when no reason applies."
+                  },
+                  "model_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Identifier of the model used by this stage; null if unavailable."
+                  },
+                  "weights_sha256": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "SHA-256 digest identifying the exact model weights; null if unavailable."
+                  },
+                  "preprocessing_version": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Version of preprocessing actually applied by this stage; null if unavailable."
+                  },
+                  "elapsed_ms": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "description": "Measured stage execution time in milliseconds; null when the stage did not execute."
+                  },
+                  "output": {
+                    "type": "object",
+                    "nullable": true,
+                    "additionalProperties": true,
+                    "description": "Actual stage-specific result, or null when the stage was not executed. Scores are uncalibrated; segmentation PNG base64 is for frontend display and must not be interpreted or repeated by the language model."
+                  }
+                },
+                "description": "Quality-control stage. A reject result prevents downstream disease conclusions."
+              },
+              "multidisease": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "model_id",
+                  "weights_sha256",
+                  "preprocessing_version",
+                  "elapsed_ms",
+                  "output"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "not_run",
+                      "error"
+                    ],
+                    "description": "Stage execution status: completed, not_run, or error. A skipped or failed stage is not a negative finding."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Reason for skipping or failing this stage; null when no reason applies."
+                  },
+                  "model_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Identifier of the model used by this stage; null if unavailable."
+                  },
+                  "weights_sha256": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "SHA-256 digest identifying the exact model weights; null if unavailable."
+                  },
+                  "preprocessing_version": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Version of preprocessing actually applied by this stage; null if unavailable."
+                  },
+                  "elapsed_ms": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "description": "Measured stage execution time in milliseconds; null when the stage did not execute."
+                  },
+                  "output": {
+                    "type": "object",
+                    "nullable": true,
+                    "additionalProperties": true,
+                    "description": "Actual stage-specific result, or null when the stage was not executed. Scores are uncalibrated; segmentation PNG base64 is for frontend display and must not be interpreted or repeated by the language model."
+                  }
+                },
+                "description": "Multidisease screening stage. Returned model scores are uncalibrated and do not establish a diagnosis."
+              },
+              "dr_grading": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "model_id",
+                  "weights_sha256",
+                  "preprocessing_version",
+                  "elapsed_ms",
+                  "output"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "not_run",
+                      "error"
+                    ],
+                    "description": "Stage execution status: completed, not_run, or error. A skipped or failed stage is not a negative finding."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Reason for skipping or failing this stage; null when no reason applies."
+                  },
+                  "model_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Identifier of the model used by this stage; null if unavailable."
+                  },
+                  "weights_sha256": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "SHA-256 digest identifying the exact model weights; null if unavailable."
+                  },
+                  "preprocessing_version": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Version of preprocessing actually applied by this stage; null if unavailable."
+                  },
+                  "elapsed_ms": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "description": "Measured stage execution time in milliseconds; null when the stage did not execute."
+                  },
+                  "output": {
+                    "type": "object",
+                    "nullable": true,
+                    "additionalProperties": true,
+                    "description": "Actual stage-specific result, or null when the stage was not executed. Scores are uncalibrated; segmentation PNG base64 is for frontend display and must not be interpreted or repeated by the language model."
+                  }
+                },
+                "description": "Diabetic-retinopathy grading stage. Interpret output only when this stage completed."
+              },
+              "disc_cup_segmentation": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "model_id",
+                  "weights_sha256",
+                  "preprocessing_version",
+                  "elapsed_ms",
+                  "output"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "not_run",
+                      "error"
+                    ],
+                    "description": "Stage execution status: completed, not_run, or error. A skipped or failed stage is not a negative finding."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Reason for skipping or failing this stage; null when no reason applies."
+                  },
+                  "model_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Identifier of the model used by this stage; null if unavailable."
+                  },
+                  "weights_sha256": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "SHA-256 digest identifying the exact model weights; null if unavailable."
+                  },
+                  "preprocessing_version": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Version of preprocessing actually applied by this stage; null if unavailable."
+                  },
+                  "elapsed_ms": {
+                    "type": "number",
+                    "minimum": 0,
+                    "nullable": true,
+                    "description": "Measured stage execution time in milliseconds; null when the stage did not execute."
+                  },
+                  "output": {
+                    "type": "object",
+                    "nullable": true,
+                    "additionalProperties": true,
+                    "description": "Actual stage-specific result, or null when the stage was not executed. Scores are uncalibrated; segmentation PNG base64 is for frontend display and must not be interpreted or repeated by the language model."
+                  }
+                },
+                "description": "Optic-disc and optic-cup segmentation stage. Masks do not diagnose glaucoma; do not invent a cup-to-disc ratio."
+              }
+            },
+            "description": "Separate execution records for quality control, multidisease screening, DR grading, and disc/cup segmentation. Read each stage status independently."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "One service-provided warning or interpretation limitation."
+            },
+            "description": "Service-provided warnings and interpretation limitations; an empty array means no warnings were returned."
+          },
+          "research_results": {
+            "type": "object",
+            "description": "合格图像的两个研究推理阶段；没有运行或失败的项目不得推断疾病。",
+            "properties": {
+              "multilabel_11": {
+                "$ref": "#/components/schemas/StageResult"
+              },
+              "glaucoma": {
+                "$ref": "#/components/schemas/StageResult"
+              }
+            },
+            "required": [
+              "multilabel_11",
+              "glaucoma"
+            ]
+          },
+          "visual_report": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "本图的医生阅片链接。original_url 是完整视野原图，overlay_url 是带来源标识的同视野叠加图，report_url 提供并排阅片。localization_status 和 source_label 区分研究模型病灶候选、公开专家参考、解剖轮廓和不可定位。链接限时有效。",
+            "properties": {
+              "original_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "overlay_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "report_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "localization_status": {
+                "type": "string"
+              },
+              "source_label": {
+                "type": "string"
+              }
+            }
+          },
+          "report_summary": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "clinical_review 为本次图像的医生正文，含主要判读和按阅片对象归纳的意见。糖网专病分期、逐标签模型得分、冻结研究筛查线及原始得分是否达到该线保留在其余明细字段。"
+          }
+        },
+        "description": "Structured fundus screening response. Inspect overall and per-stage statuses before interpreting any returned output."
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "seed": 20261113,
+  "task": "image_quality",
+  "kind": "multiclass",
+  "labels": [
+    "quality_grade"
+  ],
+  "num_classes": 3,
+  "data": {
+    "protocol": "strict_cross_domain",
+    "datasets": [
+      "EyeQ"
+    ]
+  },
+  "model": {
+    "name": "vit_small_patch14_dinov2.lvd142m",
+    "pretrained": true,
+    "img_size": 392,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": true
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 0,
+    "color_jitter": 0
+  },
+  "loss": {
+    "label_smoothing": 0.05,
+    "class_weights": [
+      0.598853,
+      1.262078,
+      1.139069
+    ],
+    "weighting_note": "Fixed from this configuration training labels only; sqrt inverse frequency / sqrt negative-positive ratio capped at 10. No validation/test labels used.",
+    "training_label_counts": {
+      "quality_grade": {
+        "1": 1599,
+        "0": 7102,
+        "2": 1963
+      }
+    }
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 4,
+    "grad_accum_steps": 4,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 0.0001,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 1,
+    "full_finetune_epoch": 1,
+    "best_metric": "macro_f1",
+    "best_mode": "max",
+    "log_every": 25
+  }
+}

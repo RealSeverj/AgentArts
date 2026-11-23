@@ -1,0 +1,34 @@
+{
+  "full_and_optic_disc_member": "dual_vitb",
+  "full_image_member": "global_vitl",
+  "labels": [
+    "RVO",
+    "LS",
+    "DN",
+    "AMD",
+    "CSR",
+    "OPTIC_DISC_CUPPING",
+    "ODE",
+    "ODP",
+    "MYOPIC_FUNDUS",
+    "TSLN",
+    "ABNORMAL"
+  ],
+  "members": [
+    {
+      "checkpoint_sha256": "20ccbb5a69bfdcf060abc76caa50e1e7b6170fcf95a5614f8447635ce8c4cc3f",
+      "locator_sha256": null,
+      "role": "global_vitl",
+      "weight": 0.5
+    },
+    {
+      "checkpoint_sha256": "602e675dadcc4ef6818bf6693494c4239630d43c75e66643a5a815e07acd4f21",
+      "locator_sha256": "bb25840047eedca5b115c3a81c9f7b8e3e73a8a0729cc6c67b9f55b1c38ef5e7",
+      "role": "dual_vitb",
+      "weight": 0.5
+    }
+  ],
+  "operation": "mean of two post-sigmoid probability vectors in float64",
+  "scores": "per-label probabilities; finite inverse-logit exported for compatibility only",
+  "version": 1
+}

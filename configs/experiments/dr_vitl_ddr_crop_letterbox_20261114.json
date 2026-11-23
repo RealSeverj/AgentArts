@@ -1,0 +1,119 @@
+{
+  "seed": 20261113,
+  "task": "dr_grading",
+  "kind": "multiclass",
+  "labels": [
+    "dr_grade"
+  ],
+  "num_classes": 5,
+  "data": {
+    "protocol": "strict_cross_domain",
+    "datasets": [
+      "DDR"
+    ],
+    "source_isolated": true,
+    "isolation_root": "prepared/source_isolated",
+    "isolation_manifest_sha256": "219a369b440992d30d1e6baa036de3616009c69e16a209b25951864b625a2362",
+    "image_cache_dir": "/mnt/retina/cache/ddr_crop_letterbox_336_20261114"
+  },
+  "model": {
+    "name": "vit_large_patch14_dinov2.lvd142m",
+    "pretrained": true,
+    "img_size": 336,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": false,
+    "dropout": 0.1,
+    "kwargs": {
+      "pretrained_cfg_overlay": {
+        "hf_hub_id": null,
+        "url": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth"
+      }
+    }
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 10,
+    "color_jitter": 0.1,
+    "resize_before_augmentation": true
+  },
+  "loss": {
+    "label_smoothing": 0.05,
+    "class_weights": [
+      0.37555431236773634,
+      1.1973978374782472,
+      0.4521462810342489,
+      1.984017956117585,
+      0.9908836130021823
+    ],
+    "training_label_counts": {
+      "dr_grade": {
+        "0": 3070,
+        "1": 302,
+        "2": 2118,
+        "3": 110,
+        "4": 441
+      }
+    },
+    "weighting_source": {
+      "dataset": "DDR",
+      "base_protocol": "strict_cross_domain",
+      "split": "train",
+      "manifest_sha256": "d37f79b24f72fc2fa91bfeafd76df29512765163780205cad0fae8b669e3e33d"
+    },
+    "weighting_note": "Recomputed from this source's known training labels only: multiclass sqrt inverse frequency normalized to mean 1; multilabel sqrt(negative/positive) capped at 10. No validation/test labels used for weighting."
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 16,
+    "grad_accum_steps": 1,
+    "workers": 6,
+    "amp": "fp16",
+    "lr": 1e-05,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 5,
+    "full_finetune_epoch": 30,
+    "best_metric": "qwk",
+    "best_mode": "max",
+    "log_every": 25,
+    "backbone_lr": 1e-05,
+    "head_lr": 0.001,
+    "unfreeze_last_n_blocks": 4
+  },
+  "notes": "NEW UNSTARTED EXPERIMENT: DDR source-isolated train/val/test unchanged. Only deterministic geometry changes: conservative black-border crop, aspect-preserving BILINEAR resize, centered black padding; same geometry for training/validation/test, online augmentation train only. Same pinned APTOS epoch5 weights-only parent and 30-epoch head5/last4-blocks25 recipe as the prior DDR run. Optimizer/scheduler/scaler/epoch/RNG start fresh. No old DDR checkpoint overwrite or resume. External cohort is not part of this experiment delivery. User will rent a new Huawei Cloud server after preparation is verified; no local full training.",
+  "initialization": {
+    "mode": "weights_only",
+    "checkpoint": "/mnt/retina/imported/aptos_head_best.pt",
+    "checkpoint_sha256": "80c13752f5655290b2349ebc1dce951c83ef7aa7aa27d17572d09fbd0078fe05",
+    "parent_training_sources": [
+      "APTOS2019"
+    ],
+    "evaluate_before_training": true
+  },
+  "preprocessing": {
+    "mode": "fundus_crop_letterbox_v1",
+    "black_threshold": 8,
+    "analysis_size": 512,
+    "crop_margin": 0.02,
+    "min_component_fraction": 0.01,
+    "min_axis_fraction": 0.25,
+    "padding_color": [
+      0,
+      0,
+      0
+    ]
+  }
+}

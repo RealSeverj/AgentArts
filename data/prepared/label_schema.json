@@ -1,0 +1,232 @@
+{
+  "disc_cup_segmentation": {
+    "label_order": [
+      "optic_cup",
+      "optic_disc"
+    ],
+    "observed_values": {
+      "optic_cup": [],
+      "optic_disc": []
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "dr_grading": {
+    "label_order": [
+      "dr_grade"
+    ],
+    "observed_values": {
+      "dr_grade": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "glaucoma_classification": {
+    "label_order": [
+      "glaucoma",
+      "glaucoma_status"
+    ],
+    "observed_values": {
+      "glaucoma": [
+        "0",
+        "1"
+      ],
+      "glaucoma_status": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "image_quality": {
+    "label_order": [
+      "fives_Blur",
+      "fives_IC",
+      "fives_LC",
+      "quality_grade",
+      "ungradable"
+    ],
+    "observed_values": {
+      "fives_Blur": [
+        "0",
+        "1"
+      ],
+      "fives_IC": [
+        "0",
+        "1"
+      ],
+      "fives_LC": [
+        "0",
+        "1"
+      ],
+      "quality_grade": [
+        "0",
+        "1",
+        "2"
+      ],
+      "ungradable": [
+        "False",
+        "True"
+      ]
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "landmark_localization": {
+    "label_order": [
+      "fovea_center",
+      "optic_disc_center"
+    ],
+    "observed_values": {
+      "fovea_center": [],
+      "optic_disc_center": []
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "lesion_detection": {
+    "label_order": [
+      "objects"
+    ],
+    "observed_values": {
+      "objects": []
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "lesion_segmentation": {
+    "label_order": [
+      "EX",
+      "HE",
+      "MA",
+      "SE"
+    ],
+    "observed_values": {
+      "EX": [],
+      "HE": [],
+      "MA": [],
+      "SE": []
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "multidisease": {
+    "label_order": [
+      "DR",
+      "AMD",
+      "MYOPIC_FUNDUS",
+      "OPTIC_DISC_CUPPING",
+      "ABNORMAL"
+    ],
+    "observed_values": {
+      "DR": [
+        "0",
+        "1"
+      ],
+      "AMD": [
+        "0",
+        "1"
+      ],
+      "MYOPIC_FUNDUS": [
+        "0",
+        "1"
+      ],
+      "OPTIC_DISC_CUPPING": [
+        "0",
+        "1"
+      ],
+      "ABNORMAL": [
+        "0",
+        "1"
+      ]
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  },
+  "odir_patient_multilabel": {
+    "label_order": [
+      "N",
+      "D",
+      "G",
+      "C",
+      "A",
+      "H",
+      "M",
+      "O"
+    ],
+    "observed_values": {
+      "N": [
+        "0",
+        "1"
+      ],
+      "D": [
+        "0",
+        "1"
+      ],
+      "G": [
+        "0",
+        "1"
+      ],
+      "C": [
+        "0",
+        "1"
+      ],
+      "A": [
+        "0",
+        "1"
+      ],
+      "H": [
+        "0",
+        "1"
+      ],
+      "M": [
+        "0",
+        "1"
+      ],
+      "O": [
+        "0",
+        "1"
+      ]
+    },
+    "input_units": [
+      "patient_pair"
+    ],
+    "known_label_mask_required": true
+  },
+  "vessel_segmentation": {
+    "label_order": [
+      "vessel"
+    ],
+    "observed_values": {
+      "vessel": []
+    },
+    "input_units": [
+      "image"
+    ],
+    "known_label_mask_required": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "models": {
+    "quality": {
+      "checkpoint": "02_模型训练与评估/01_在用模型/02_眼底图像质控/quality_best.pt",
+      "sha256": "fa5ee22b483b09c8dec9050455b5e6010d51c2ecced17d0a55982657bdd66f8f",
+      "model_id": "quality_eyeq_vitb14_392_best11_20261114"
+    },
+    "multidisease": {
+      "checkpoint": "02_模型训练与评估/01_在用模型/03_眼底多异常五标签/multidisease_best.pt",
+      "sha256": "f5352ccb0834b41a2d9e6ed6d43c80b7b7b2e87dcfa1c0b3690f96eddafca640",
+      "model_id": "multidisease_rfmid_vitb14_392_best21_20261114"
+    },
+    "dr_grading": {
+      "checkpoint": "02_模型训练与评估/01_在用模型/01_糖网五级分级/best.pt",
+      "sha256": "a85acf367a34361986739e93030bc5c51a390ddd33c63d49da883abf1562d4ab",
+      "model_id": "dr_ddr_vitl14_crop336_best24_20261114"
+    },
+    "disc_cup_segmentation": {
+      "checkpoint": "02_模型训练与评估/01_在用模型/04_视盘视杯分割/disc_refuge_best.pt",
+      "sha256": "bb25840047eedca5b115c3a81c9f7b8e3e73a8a0729cc6c67b9f55b1c38ef5e7",
+      "model_id": "disc_cup_refuge_unet32_512_best33_20261114"
+    }
+  }
+}

@@ -1,0 +1,365 @@
+{
+  "selection_split": "val",
+  "selection_metric": "11-label macro noninterpolated average precision",
+  "tie_priority": [
+    "baseline",
+    "global_vitl",
+    "dual_vitb",
+    "mean_probability"
+  ],
+  "winner": "mean_probability",
+  "ensemble_selected": true,
+  "validation_manifest_sha256": "9f21c8e0cc337d6cf820f44329452fd3987fcf72487f1add227bbc8051fb379a",
+  "validation_predictions": {
+    "baseline": {
+      "checkpoint_sha256": "d518f2eac265cbab14763322c4b49a94eb9917a6880ef14ee256624a86f20a00",
+      "locator_sha256": null,
+      "roi_manifest_sha256": null,
+      "predictions_sha256": "7432c586ff0ff74e47f67b5c2a5555d029c399a5fe097bcf2bb121c434f50c20"
+    },
+    "global_vitl": {
+      "checkpoint_sha256": "20ccbb5a69bfdcf060abc76caa50e1e7b6170fcf95a5614f8447635ce8c4cc3f",
+      "locator_sha256": null,
+      "roi_manifest_sha256": null,
+      "predictions_sha256": "3a9c7252f438d790489a9dabe8e9b667c93e7f16f8f962622507c58e565d7bc7"
+    },
+    "dual_vitb": {
+      "checkpoint_sha256": "602e675dadcc4ef6818bf6693494c4239630d43c75e66643a5a815e07acd4f21",
+      "locator_sha256": "bb25840047eedca5b115c3a81c9f7b8e3e73a8a0729cc6c67b9f55b1c38ef5e7",
+      "roi_manifest_sha256": "3cc1aa7db9e84cd2ec14a53a31afcd7b21325bc6366a31e16b1533bfbdb70961",
+      "predictions_sha256": "10df57858241eb906a12db50da0cb5ae42f2fc1fbb6a663cff5282a53b93db85"
+    }
+  },
+  "ensemble_recipe_sha256": "22568735bd84cced4eb5be06ab8ef45139a35d58ea139994681338d4171a2edf",
+  "ensemble_threshold_lock_sha256": "b09656c6c1802f598747d13dc444d8f75e4f16d325714d6edd7daa2b450e5945",
+  "validation": {
+    "baseline": {
+      "macro_ap": 0.6692711175029235,
+      "per_label": {
+        "RVO": {
+          "ap": 0.808058889042858,
+          "recall": 0.9032258064516129,
+          "fp": 21,
+          "threshold": 0.02898062951862812,
+          "goal_status": "met"
+        },
+        "LS": {
+          "ap": 0.7269098147581119,
+          "recall": 0.9411764705882353,
+          "fp": 119,
+          "threshold": 0.0002131875662598759,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "DN": {
+          "ap": 0.4449620865327758,
+          "recall": 0.9130434782608695,
+          "fp": 125,
+          "threshold": 0.0011291546979919076,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "ap": 0.6510357716534205,
+          "recall": 0.9210526315789473,
+          "fp": 47,
+          "threshold": 0.003869391046464443,
+          "goal_status": "met"
+        },
+        "CSR": {
+          "ap": 0.6428512119291435,
+          "recall": 0.9090909090909091,
+          "fp": 57,
+          "threshold": 0.0008135565440170467,
+          "goal_status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "ap": 0.5758803209198783,
+          "recall": 0.9014084507042254,
+          "fp": 163,
+          "threshold": 0.0003275842755101621,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ODE": {
+          "ap": 0.6952275108801507,
+          "recall": 0.9047619047619048,
+          "fp": 58,
+          "threshold": 0.0018102108733728528,
+          "goal_status": "met"
+        },
+        "ODP": {
+          "ap": 0.252266963312551,
+          "recall": 0.9230769230769231,
+          "fp": 417,
+          "threshold": 1.7097478121286258e-05,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "MYOPIC_FUNDUS": {
+          "ap": 0.8551149510123743,
+          "recall": 0.9117647058823529,
+          "fp": 26,
+          "threshold": 0.04092230275273323,
+          "goal_status": "met"
+        },
+        "TSLN": {
+          "ap": 0.7241700979444975,
+          "recall": 0.9047619047619048,
+          "fp": 67,
+          "threshold": 0.002058753278106451,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "ap": 0.9855046745463949,
+          "recall": 0.902,
+          "fp": 14,
+          "threshold": 0.8073087334632874,
+          "goal_status": "false_positive_limit_exceeded"
+        }
+      }
+    },
+    "global_vitl": {
+      "macro_ap": 0.6740004400324332,
+      "per_label": {
+        "RVO": {
+          "ap": 0.7927713169552996,
+          "recall": 0.9032258064516129,
+          "fp": 47,
+          "threshold": 0.0053225355222821236,
+          "goal_status": "met"
+        },
+        "LS": {
+          "ap": 0.7332795258221686,
+          "recall": 0.9411764705882353,
+          "fp": 162,
+          "threshold": 0.0004272078804206103,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "DN": {
+          "ap": 0.5373835596196038,
+          "recall": 0.9130434782608695,
+          "fp": 112,
+          "threshold": 0.10856642574071884,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "ap": 0.6382787235912115,
+          "recall": 0.9210526315789473,
+          "fp": 61,
+          "threshold": 0.012673736549913883,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "CSR": {
+          "ap": 0.7597746785336456,
+          "recall": 0.9090909090909091,
+          "fp": 58,
+          "threshold": 0.011777842417359352,
+          "goal_status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "ap": 0.5493546752812406,
+          "recall": 0.9014084507042254,
+          "fp": 245,
+          "threshold": 0.0004459562187548727,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ODE": {
+          "ap": 0.6080704246186228,
+          "recall": 0.9047619047619048,
+          "fp": 37,
+          "threshold": 0.060863446444272995,
+          "goal_status": "met"
+        },
+        "ODP": {
+          "ap": 0.21965708387800142,
+          "recall": 0.9230769230769231,
+          "fp": 258,
+          "threshold": 0.0017891592578962445,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "MYOPIC_FUNDUS": {
+          "ap": 0.8672207842670046,
+          "recall": 0.9117647058823529,
+          "fp": 32,
+          "threshold": 0.11899801343679428,
+          "goal_status": "met"
+        },
+        "TSLN": {
+          "ap": 0.720827916949344,
+          "recall": 0.9047619047619048,
+          "fp": 40,
+          "threshold": 0.07055959850549698,
+          "goal_status": "met"
+        },
+        "ABNORMAL": {
+          "ap": 0.9873861508406223,
+          "recall": 0.904,
+          "fp": 19,
+          "threshold": 0.7932661771774292,
+          "goal_status": "false_positive_limit_exceeded"
+        }
+      }
+    },
+    "dual_vitb": {
+      "macro_ap": 0.7052386641589579,
+      "per_label": {
+        "RVO": {
+          "ap": 0.7941970765294633,
+          "recall": 0.9032258064516129,
+          "fp": 53,
+          "threshold": 0.0059110685251653194,
+          "goal_status": "met"
+        },
+        "LS": {
+          "ap": 0.7859786484086797,
+          "recall": 0.9411764705882353,
+          "fp": 125,
+          "threshold": 0.0001476803736295551,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "DN": {
+          "ap": 0.4560468944590847,
+          "recall": 0.9130434782608695,
+          "fp": 111,
+          "threshold": 0.0044683837331831455,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "ap": 0.6807663318504148,
+          "recall": 0.9210526315789473,
+          "fp": 49,
+          "threshold": 0.002058753278106451,
+          "goal_status": "met"
+        },
+        "CSR": {
+          "ap": 0.6933378636867009,
+          "recall": 0.9090909090909091,
+          "fp": 38,
+          "threshold": 0.0017891592578962445,
+          "goal_status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "ap": 0.7289065898504618,
+          "recall": 0.9014084507042254,
+          "fp": 105,
+          "threshold": 0.0008830457809381187,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ODE": {
+          "ap": 0.7239618933341323,
+          "recall": 0.9047619047619048,
+          "fp": 81,
+          "threshold": 0.000552778656128794,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ODP": {
+          "ap": 0.27024713692236196,
+          "recall": 0.9230769230769231,
+          "fp": 338,
+          "threshold": 1.683241134742275e-05,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "MYOPIC_FUNDUS": {
+          "ap": 0.886890234339019,
+          "recall": 0.9411764705882353,
+          "fp": 23,
+          "threshold": 0.02590802125632763,
+          "goal_status": "met"
+        },
+        "TSLN": {
+          "ap": 0.7494537927863474,
+          "recall": 0.9206349206349206,
+          "fp": 64,
+          "threshold": 0.006314364727586508,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "ap": 0.9878388435818715,
+          "recall": 0.906,
+          "fp": 15,
+          "threshold": 0.7991290092468262,
+          "goal_status": "false_positive_limit_exceeded"
+        }
+      }
+    },
+    "mean_probability": {
+      "macro_ap": 0.714214282663748,
+      "per_label": {
+        "RVO": {
+          "ap": 0.8156147715615982,
+          "recall": 0.9032258064516129,
+          "fp": 44,
+          "threshold": 0.011820118874311447,
+          "goal_status": "met"
+        },
+        "LS": {
+          "ap": 0.7651646007880702,
+          "recall": 0.9411764705882353,
+          "fp": 106,
+          "threshold": 0.0009931727981893346,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "DN": {
+          "ap": 0.4985671615923895,
+          "recall": 0.9130434782608695,
+          "fp": 111,
+          "threshold": 0.0675105344853364,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "ap": 0.66513588508543,
+          "recall": 0.9210526315789473,
+          "fp": 66,
+          "threshold": 0.006723892467562109,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "CSR": {
+          "ap": 0.818088483997575,
+          "recall": 0.9090909090909091,
+          "fp": 10,
+          "threshold": 0.0720701176323928,
+          "goal_status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "ap": 0.6605147546009417,
+          "recall": 0.9014084507042254,
+          "fp": 190,
+          "threshold": 0.0009663661439844873,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "ODE": {
+          "ap": 0.7249132509127614,
+          "recall": 0.9047619047619048,
+          "fp": 41,
+          "threshold": 0.030557316611520946,
+          "goal_status": "met"
+        },
+        "ODP": {
+          "ap": 0.2857388641231817,
+          "recall": 0.9230769230769231,
+          "fp": 274,
+          "threshold": 0.0009341061486338731,
+          "goal_status": "false_positive_limit_exceeded"
+        },
+        "MYOPIC_FUNDUS": {
+          "ap": 0.8758672819698515,
+          "recall": 0.9117647058823529,
+          "fp": 33,
+          "threshold": 0.07395362388342619,
+          "goal_status": "met"
+        },
+        "TSLN": {
+          "ap": 0.7578204700257416,
+          "recall": 0.9365079365079365,
+          "fp": 44,
+          "threshold": 0.05557347844296601,
+          "goal_status": "met"
+        },
+        "ABNORMAL": {
+          "ap": 0.9889315846436872,
+          "recall": 0.902,
+          "fp": 13,
+          "threshold": 0.7770775258541107,
+          "goal_status": "met"
+        }
+      }
+    }
+  }
+}

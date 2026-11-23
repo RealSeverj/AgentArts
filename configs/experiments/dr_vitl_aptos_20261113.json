@@ -1,0 +1,98 @@
+{
+  "seed": 20261113,
+  "task": "dr_grading",
+  "kind": "multiclass",
+  "labels": [
+    "dr_grade"
+  ],
+  "num_classes": 5,
+  "data": {
+    "protocol": "strict_cross_domain",
+    "datasets": [
+      "APTOS2019"
+    ],
+    "source_isolated": true,
+    "isolation_root": "prepared/source_isolated",
+    "isolation_manifest_sha256": "219a369b440992d30d1e6baa036de3616009c69e16a209b25951864b625a2362",
+    "external_dataset": "IDRiD",
+    "image_cache_dir": "/mnt/retina/cache/source_isolated_336/aptos2019"
+  },
+  "model": {
+    "name": "vit_large_patch14_dinov2.lvd142m",
+    "pretrained": true,
+    "img_size": 336,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": true,
+    "dropout": 0.1,
+    "kwargs": {
+      "pretrained_cfg_overlay": {
+        "hf_hub_id": null,
+        "url": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth"
+      }
+    }
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 10,
+    "color_jitter": 0.1,
+    "resize_before_augmentation": true
+  },
+  "loss": {
+    "label_smoothing": 0.05,
+    "class_weights": [
+      0.4740465287373822,
+      1.089428798461655,
+      0.6602935637246989,
+      1.5350102482598913,
+      1.2412208608163728
+    ],
+    "training_label_counts": {
+      "dr_grade": {
+        "0": 1426,
+        "1": 270,
+        "2": 735,
+        "3": 136,
+        "4": 208
+      }
+    },
+    "weighting_source": {
+      "dataset": "APTOS2019",
+      "base_protocol": "strict_cross_domain",
+      "split": "train",
+      "manifest_sha256": "080215a3e7e8b5e3f13f8e4b5f247942268e5c5ef770a68a0089bc8d8f46f0c8"
+    },
+    "weighting_note": "Recomputed from this source's known training labels only: multiclass sqrt inverse frequency normalized to mean 1; multilabel sqrt(negative/positive) capped at 10. No validation/test labels used for weighting."
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 8,
+    "grad_accum_steps": 2,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 1e-05,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 5,
+    "full_finetune_epoch": 30,
+    "best_metric": "qwk",
+    "best_mode": "max",
+    "log_every": 25,
+    "backbone_lr": 1e-05,
+    "head_lr": 0.001,
+    "unfreeze_last_n_blocks": 4
+  },
+  "notes": "APTOS-only DINOv2-L/14 at 336. Epochs1-5 head only; epochs6-30 last4 transformer blocks and head only; no full-backbone unfreezing. New initialization from public pretrained weights, never the old mixed-source checkpoint. Select best by APTOS validation QWK. Lock best checkpoint before internal and IDRiD external tests. Never tune on test results. IDRiD was already evaluated in earlier project experiments, so it is not a never-observed prospective holdout. DDR is deferred by user."
+}

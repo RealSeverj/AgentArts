@@ -1,0 +1,20 @@
+{
+  "registry": "models.json",
+  "weights_root": "../../weights",
+  "device": "auto",
+  "precision": "auto",
+  "cpu_threads": 4,
+  "max_concurrent_requests": 1,
+  "max_body_bytes": 16384,
+  "docs_enabled": false,
+  "routing": {
+    "mode": "all",
+    "policy_id": "development-all-v1",
+    "validation_passed": false
+  },
+  "image_policy": {
+    "public_dns_hosts": [
+      "example-bucket.obs.cn-southwest-2.myhuaweicloud.com"
+    ]
+  }
+}

@@ -1,0 +1,1841 @@
+{
+  "format_version": 1,
+  "generator_version": 1,
+  "isolation_manifest_sha256": "219a369b440992d30d1e6baa036de3616009c69e16a209b25951864b625a2362",
+  "isolation_identity_sha256": "838112f89e69d7cb4ec1fc9e5cd2405a2eb30afc9dee28a1901e67639ee7a3c2",
+  "default_system_base_protocol": "strict_cross_domain",
+  "mixing_base_protocols_allowed": false,
+  "default_entry": "strict_cross_domain/dr_grading_ddr.json",
+  "include_idrid_external": true,
+  "protocol_groups": {
+    "strict_cross_domain": {
+      "default_system_eligible": true,
+      "independent_experiments_only": false,
+      "generated": [
+        {
+          "template": "disc_cup_segmentation.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "disc_cup_segmentation",
+          "kind": "segmentation",
+          "source": "PAPILA",
+          "effective_records": {
+            "train": 338,
+            "val": 72,
+            "test": 78,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "optic_cup": 338,
+              "optic_disc": 338
+            },
+            "val": {
+              "optic_cup": 72,
+              "optic_disc": 72
+            },
+            "test": {
+              "optic_cup": 78,
+              "optic_disc": 78
+            },
+            "external_test": {
+              "optic_cup": 0,
+              "optic_disc": 0
+            }
+          },
+          "training_label_counts": {
+            "optic_cup": {},
+            "optic_disc": {}
+          },
+          "config": "strict_cross_domain/disc_cup_segmentation_papila.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "disc_cup_segmentation.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "disc_cup_segmentation",
+          "kind": "segmentation",
+          "source": "REFUGE",
+          "effective_records": {
+            "train": 400,
+            "val": 400,
+            "test": 400,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "optic_cup": 400,
+              "optic_disc": 400
+            },
+            "val": {
+              "optic_cup": 400,
+              "optic_disc": 400
+            },
+            "test": {
+              "optic_cup": 400,
+              "optic_disc": 400
+            },
+            "external_test": {
+              "optic_cup": 0,
+              "optic_disc": 0
+            }
+          },
+          "training_label_counts": {
+            "optic_cup": {},
+            "optic_disc": {}
+          },
+          "config": "strict_cross_domain/disc_cup_segmentation_refuge.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "dr_grading.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "APTOS2019",
+          "effective_records": {
+            "train": 2775,
+            "val": 359,
+            "test": 354,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 2775
+            },
+            "val": {
+              "dr_grade": 359
+            },
+            "test": {
+              "dr_grade": 354
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 1426,
+              "1": 270,
+              "2": 735,
+              "3": 136,
+              "4": 208
+            }
+          },
+          "config": "strict_cross_domain/dr_grading_aptos2019.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "dr_grading.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "DDR",
+          "effective_records": {
+            "train": 6041,
+            "val": 2479,
+            "test": 3898,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 6041
+            },
+            "val": {
+              "dr_grade": 2479
+            },
+            "test": {
+              "dr_grade": 3898
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 3070,
+              "1": 302,
+              "2": 2118,
+              "3": 110,
+              "4": 441
+            }
+          },
+          "config": "strict_cross_domain/dr_grading_ddr.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": true,
+          "selected_external_evaluation": {
+            "dataset": "IDRiD",
+            "split": "external_test",
+            "effective_records": 506,
+            "training_records_added": 0
+          }
+        },
+        {
+          "template": "dr_grading_dinov3_large.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "APTOS2019",
+          "effective_records": {
+            "train": 2775,
+            "val": 359,
+            "test": 354,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 2775
+            },
+            "val": {
+              "dr_grade": 359
+            },
+            "test": {
+              "dr_grade": 354
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 1426,
+              "1": 270,
+              "2": 735,
+              "3": 136,
+              "4": 208
+            }
+          },
+          "config": "strict_cross_domain/dr_grading_dinov3_large_aptos2019.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": true,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "dr_grading_dinov3_large.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "DDR",
+          "effective_records": {
+            "train": 6041,
+            "val": 2479,
+            "test": 3898,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 6041
+            },
+            "val": {
+              "dr_grade": 2479
+            },
+            "test": {
+              "dr_grade": 3898
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 3070,
+              "1": 302,
+              "2": 2118,
+              "3": 110,
+              "4": 441
+            }
+          },
+          "config": "strict_cross_domain/dr_grading_dinov3_large_ddr.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": true,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": {
+            "dataset": "IDRiD",
+            "split": "external_test",
+            "effective_records": 506,
+            "training_records_added": 0
+          }
+        },
+        {
+          "template": "glaucoma_classification.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "glaucoma_classification",
+          "kind": "multilabel",
+          "source": "PAPILA",
+          "effective_records": {
+            "train": 292,
+            "val": 62,
+            "test": 66,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "glaucoma": 292
+            },
+            "val": {
+              "glaucoma": 62
+            },
+            "test": {
+              "glaucoma": 66
+            },
+            "external_test": {
+              "glaucoma": 0
+            }
+          },
+          "training_label_counts": {
+            "glaucoma": {
+              "0": 232,
+              "1": 60
+            }
+          },
+          "config": "strict_cross_domain/glaucoma_classification_papila.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "image_quality_ddr.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "DDR",
+          "effective_records": {
+            "train": 6616,
+            "val": 2709,
+            "test": 4244,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "ungradable": 6616
+            },
+            "val": {
+              "ungradable": 2709
+            },
+            "test": {
+              "ungradable": 4244
+            },
+            "external_test": {
+              "ungradable": 0
+            }
+          },
+          "training_label_counts": {
+            "ungradable": {
+              "0": 6041,
+              "1": 575
+            }
+          },
+          "config": "strict_cross_domain/image_quality_ddr_ddr.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "image_quality_eyeq.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multiclass",
+          "source": "EyeQ",
+          "effective_records": {
+            "train": 10664,
+            "val": 1875,
+            "test": 16249,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "quality_grade": 10664
+            },
+            "val": {
+              "quality_grade": 1875
+            },
+            "test": {
+              "quality_grade": 16249
+            },
+            "external_test": {
+              "quality_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "quality_grade": {
+              "0": 7102,
+              "1": 1599,
+              "2": 1963
+            }
+          },
+          "config": "strict_cross_domain/image_quality_eyeq_eyeq.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "lesion_detection.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "lesion_detection",
+          "kind": "detection",
+          "source": "DDR",
+          "effective_records": {
+            "train": 275,
+            "val": 131,
+            "test": 351,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "objects": 275
+            },
+            "val": {
+              "objects": 131
+            },
+            "test": {
+              "objects": 351
+            },
+            "external_test": {
+              "objects": 0
+            }
+          },
+          "training_label_counts": {
+            "EX": {},
+            "HE": {},
+            "MA": {},
+            "SE": {}
+          },
+          "config": "strict_cross_domain/lesion_detection_ddr.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": true,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "lesion_segmentation.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "lesion_segmentation",
+          "kind": "segmentation",
+          "source": "DDR",
+          "effective_records": {
+            "train": 275,
+            "val": 131,
+            "test": 351,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "EX": 275,
+              "HE": 275,
+              "MA": 275,
+              "SE": 275
+            },
+            "val": {
+              "EX": 131,
+              "HE": 131,
+              "MA": 131,
+              "SE": 131
+            },
+            "test": {
+              "EX": 351,
+              "HE": 351,
+              "MA": 351,
+              "SE": 351
+            },
+            "external_test": {
+              "EX": 0,
+              "HE": 0,
+              "MA": 0,
+              "SE": 0
+            }
+          },
+          "training_label_counts": {
+            "EX": {},
+            "HE": {},
+            "MA": {},
+            "SE": {}
+          },
+          "config": "strict_cross_domain/lesion_segmentation_ddr.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": {
+            "dataset": "IDRiD",
+            "split": "external_test",
+            "effective_records": 80,
+            "training_records_added": 0
+          }
+        },
+        {
+          "template": "multidisease.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "multidisease",
+          "kind": "multilabel",
+          "source": "RFMiD",
+          "effective_records": {
+            "train": 1878,
+            "val": 634,
+            "test": 615,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "DR": 1878,
+              "AMD": 1878,
+              "MYOPIC_FUNDUS": 1878,
+              "OPTIC_DISC_CUPPING": 1878,
+              "ABNORMAL": 1878
+            },
+            "val": {
+              "DR": 634,
+              "AMD": 634,
+              "MYOPIC_FUNDUS": 634,
+              "OPTIC_DISC_CUPPING": 634,
+              "ABNORMAL": 634
+            },
+            "test": {
+              "DR": 615,
+              "AMD": 615,
+              "MYOPIC_FUNDUS": 615,
+              "OPTIC_DISC_CUPPING": 615,
+              "ABNORMAL": 615
+            },
+            "external_test": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            }
+          },
+          "training_label_counts": {
+            "DR": {
+              "0": 1533,
+              "1": 345
+            },
+            "AMD": {
+              "0": 1778,
+              "1": 100
+            },
+            "MYOPIC_FUNDUS": {
+              "0": 1777,
+              "1": 101
+            },
+            "OPTIC_DISC_CUPPING": {
+              "0": 1601,
+              "1": 277
+            },
+            "ABNORMAL": {
+              "0": 391,
+              "1": 1487
+            }
+          },
+          "config": "strict_cross_domain/multidisease_rfmid.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "odir_patient_multilabel.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "odir_patient_multilabel",
+          "kind": "multilabel",
+          "source": "ODIR-5K",
+          "effective_records": {
+            "train": 2968,
+            "val": 525,
+            "test": 1501,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "N": 2968,
+              "D": 2968,
+              "G": 2968,
+              "C": 2968,
+              "A": 2968,
+              "H": 2968,
+              "M": 2968,
+              "O": 2968
+            },
+            "val": {
+              "N": 525,
+              "D": 525,
+              "G": 525,
+              "C": 525,
+              "A": 525,
+              "H": 525,
+              "M": 525,
+              "O": 525
+            },
+            "test": {
+              "N": 1501,
+              "D": 1501,
+              "G": 1501,
+              "C": 1501,
+              "A": 1501,
+              "H": 1501,
+              "M": 1501,
+              "O": 1501
+            },
+            "external_test": {
+              "N": 0,
+              "D": 0,
+              "G": 0,
+              "C": 0,
+              "A": 0,
+              "H": 0,
+              "M": 0,
+              "O": 0
+            }
+          },
+          "training_label_counts": {
+            "N": {
+              "0": 2001,
+              "1": 967
+            },
+            "D": {
+              "0": 2011,
+              "1": 957
+            },
+            "G": {
+              "0": 2786,
+              "1": 182
+            },
+            "C": {
+              "0": 2789,
+              "1": 179
+            },
+            "A": {
+              "0": 2830,
+              "1": 138
+            },
+            "H": {
+              "0": 2882,
+              "1": 86
+            },
+            "M": {
+              "0": 2823,
+              "1": 145
+            },
+            "O": {
+              "0": 2134,
+              "1": 834
+            }
+          },
+          "config": "strict_cross_domain/odir_patient_multilabel_odir_5k.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": true,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        }
+      ],
+      "prohibited_or_unrouted": [
+        {
+          "template": "disc_cup_segmentation.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "disc_cup_segmentation",
+          "kind": "segmentation",
+          "source": "IDRiD",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 80
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "optic_cup": 0,
+              "optic_disc": 0
+            },
+            "val": {
+              "optic_cup": 0,
+              "optic_disc": 0
+            },
+            "test": {
+              "optic_cup": 0,
+              "optic_disc": 0
+            },
+            "external_test": {
+              "optic_cup": 0,
+              "optic_disc": 80
+            }
+          },
+          "training_label_counts": {
+            "optic_cup": {},
+            "optic_disc": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:optic_cup",
+            "no_train_supervision_for_output:optic_disc",
+            "no_val_supervision_for_output:optic_cup",
+            "no_val_supervision_for_output:optic_disc"
+          ]
+        },
+        {
+          "template": "dr_grading.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "EyeQ",
+          "effective_records": {
+            "train": 10664,
+            "val": 1875,
+            "test": 16249,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 10664
+            },
+            "val": {
+              "dr_grade": 1875
+            },
+            "test": {
+              "dr_grade": 16249
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 7862,
+              "1": 765,
+              "2": 1542,
+              "3": 281,
+              "4": 214
+            }
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "dr_source_retained_for_audit_not_default_training"
+          ]
+        },
+        {
+          "template": "dr_grading.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "IDRiD",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 506
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 0
+            },
+            "val": {
+              "dr_grade": 0
+            },
+            "test": {
+              "dr_grade": 0
+            },
+            "external_test": {
+              "dr_grade": 506
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "dr_source_retained_for_audit_not_default_training",
+            "missing_training_class:dr_grade:0",
+            "missing_training_class:dr_grade:1",
+            "missing_training_class:dr_grade:2",
+            "missing_training_class:dr_grade:3",
+            "missing_training_class:dr_grade:4",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:dr_grade",
+            "no_val_supervision_for_output:dr_grade"
+          ]
+        },
+        {
+          "template": "dr_grading_dinov3_large.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "EyeQ",
+          "effective_records": {
+            "train": 10664,
+            "val": 1875,
+            "test": 16249,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 10664
+            },
+            "val": {
+              "dr_grade": 1875
+            },
+            "test": {
+              "dr_grade": 16249
+            },
+            "external_test": {
+              "dr_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {
+              "0": 7862,
+              "1": 765,
+              "2": 1542,
+              "3": 281,
+              "4": 214
+            }
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "dr_source_retained_for_audit_not_default_training"
+          ]
+        },
+        {
+          "template": "dr_grading_dinov3_large.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "dr_grading",
+          "kind": "multiclass",
+          "source": "IDRiD",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 506
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "dr_grade": 0
+            },
+            "val": {
+              "dr_grade": 0
+            },
+            "test": {
+              "dr_grade": 0
+            },
+            "external_test": {
+              "dr_grade": 506
+            }
+          },
+          "training_label_counts": {
+            "dr_grade": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "dr_source_retained_for_audit_not_default_training",
+            "missing_training_class:dr_grade:0",
+            "missing_training_class:dr_grade:1",
+            "missing_training_class:dr_grade:2",
+            "missing_training_class:dr_grade:3",
+            "missing_training_class:dr_grade:4",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:dr_grade",
+            "no_val_supervision_for_output:dr_grade"
+          ]
+        },
+        {
+          "template": "glaucoma_classification.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "glaucoma_classification",
+          "kind": "multilabel",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 400
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "glaucoma": 0
+            },
+            "val": {
+              "glaucoma": 0
+            },
+            "test": {
+              "glaucoma": 0
+            },
+            "external_test": {
+              "glaucoma": 400
+            }
+          },
+          "training_label_counts": {
+            "glaucoma": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:glaucoma",
+            "no_positive_training_label:glaucoma",
+            "no_train_supervision_for_output:glaucoma",
+            "no_val_supervision_for_output:glaucoma"
+          ]
+        },
+        {
+          "template": "glaucoma_classification.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "glaucoma_classification",
+          "kind": "multilabel",
+          "source": "REFUGE",
+          "effective_records": {
+            "train": 400,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "glaucoma": 400
+            },
+            "val": {
+              "glaucoma": 0
+            },
+            "test": {
+              "glaucoma": 0
+            },
+            "external_test": {
+              "glaucoma": 0
+            }
+          },
+          "training_label_counts": {
+            "glaucoma": {
+              "0": 360,
+              "1": 40
+            }
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_val_supervision",
+            "no_val_supervision_for_output:glaucoma"
+          ]
+        },
+        {
+          "template": "image_quality_ddr.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "EyeQ",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "ungradable": 0
+            },
+            "val": {
+              "ungradable": 0
+            },
+            "test": {
+              "ungradable": 0
+            },
+            "external_test": {
+              "ungradable": 0
+            }
+          },
+          "training_label_counts": {
+            "ungradable": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:ungradable",
+            "no_positive_training_label:ungradable",
+            "no_train_supervision_for_output:ungradable",
+            "no_val_supervision_for_output:ungradable"
+          ]
+        },
+        {
+          "template": "image_quality_ddr.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "ungradable": 0
+            },
+            "val": {
+              "ungradable": 0
+            },
+            "test": {
+              "ungradable": 0
+            },
+            "external_test": {
+              "ungradable": 0
+            }
+          },
+          "training_label_counts": {
+            "ungradable": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:ungradable",
+            "no_positive_training_label:ungradable",
+            "no_train_supervision_for_output:ungradable",
+            "no_val_supervision_for_output:ungradable"
+          ]
+        },
+        {
+          "template": "image_quality_eyeq.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multiclass",
+          "source": "DDR",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "quality_grade": 0
+            },
+            "val": {
+              "quality_grade": 0
+            },
+            "test": {
+              "quality_grade": 0
+            },
+            "external_test": {
+              "quality_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "quality_grade": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "missing_training_class:quality_grade:0",
+            "missing_training_class:quality_grade:1",
+            "missing_training_class:quality_grade:2",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:quality_grade",
+            "no_val_supervision_for_output:quality_grade"
+          ]
+        },
+        {
+          "template": "image_quality_eyeq.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "image_quality",
+          "kind": "multiclass",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "quality_grade": 0
+            },
+            "val": {
+              "quality_grade": 0
+            },
+            "test": {
+              "quality_grade": 0
+            },
+            "external_test": {
+              "quality_grade": 0
+            }
+          },
+          "training_label_counts": {
+            "quality_grade": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "missing_training_class:quality_grade:0",
+            "missing_training_class:quality_grade:1",
+            "missing_training_class:quality_grade:2",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:quality_grade",
+            "no_val_supervision_for_output:quality_grade"
+          ]
+        },
+        {
+          "template": "lesion_segmentation.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "lesion_segmentation",
+          "kind": "segmentation",
+          "source": "IDRiD",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 80
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "EX": 0,
+              "HE": 0,
+              "MA": 0,
+              "SE": 0
+            },
+            "val": {
+              "EX": 0,
+              "HE": 0,
+              "MA": 0,
+              "SE": 0
+            },
+            "test": {
+              "EX": 0,
+              "HE": 0,
+              "MA": 0,
+              "SE": 0
+            },
+            "external_test": {
+              "EX": 80,
+              "HE": 79,
+              "MA": 80,
+              "SE": 40
+            }
+          },
+          "training_label_counts": {
+            "EX": {},
+            "HE": {},
+            "MA": {},
+            "SE": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_train_supervision_for_output:EX",
+            "no_train_supervision_for_output:HE",
+            "no_train_supervision_for_output:MA",
+            "no_train_supervision_for_output:SE",
+            "no_val_supervision_for_output:EX",
+            "no_val_supervision_for_output:HE",
+            "no_val_supervision_for_output:MA",
+            "no_val_supervision_for_output:SE"
+          ]
+        },
+        {
+          "template": "multidisease.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "multidisease",
+          "kind": "multilabel",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 794
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "val": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "test": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "external_test": {
+              "DR": 400,
+              "AMD": 394,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 794
+            }
+          },
+          "training_label_counts": {
+            "DR": {},
+            "AMD": {},
+            "MYOPIC_FUNDUS": {},
+            "OPTIC_DISC_CUPPING": {},
+            "ABNORMAL": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:ABNORMAL",
+            "no_negative_training_label:AMD",
+            "no_negative_training_label:DR",
+            "no_negative_training_label:MYOPIC_FUNDUS",
+            "no_negative_training_label:OPTIC_DISC_CUPPING",
+            "no_positive_training_label:ABNORMAL",
+            "no_positive_training_label:AMD",
+            "no_positive_training_label:DR",
+            "no_positive_training_label:MYOPIC_FUNDUS",
+            "no_positive_training_label:OPTIC_DISC_CUPPING",
+            "no_train_supervision_for_output:ABNORMAL",
+            "no_train_supervision_for_output:AMD",
+            "no_train_supervision_for_output:DR",
+            "no_train_supervision_for_output:MYOPIC_FUNDUS",
+            "no_train_supervision_for_output:OPTIC_DISC_CUPPING",
+            "no_val_supervision_for_output:ABNORMAL",
+            "no_val_supervision_for_output:AMD",
+            "no_val_supervision_for_output:DR",
+            "no_val_supervision_for_output:MYOPIC_FUNDUS",
+            "no_val_supervision_for_output:OPTIC_DISC_CUPPING"
+          ]
+        },
+        {
+          "template": "multidisease.json",
+          "base_protocol": "strict_cross_domain",
+          "task": "multidisease",
+          "kind": "multilabel",
+          "source": "RFMiD2",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 848
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "val": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "test": {
+              "DR": 0,
+              "AMD": 0,
+              "MYOPIC_FUNDUS": 0,
+              "OPTIC_DISC_CUPPING": 0,
+              "ABNORMAL": 0
+            },
+            "external_test": {
+              "DR": 848,
+              "AMD": 848,
+              "MYOPIC_FUNDUS": 848,
+              "OPTIC_DISC_CUPPING": 848,
+              "ABNORMAL": 0
+            }
+          },
+          "training_label_counts": {
+            "DR": {},
+            "AMD": {},
+            "MYOPIC_FUNDUS": {},
+            "OPTIC_DISC_CUPPING": {},
+            "ABNORMAL": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:ABNORMAL",
+            "no_negative_training_label:AMD",
+            "no_negative_training_label:DR",
+            "no_negative_training_label:MYOPIC_FUNDUS",
+            "no_negative_training_label:OPTIC_DISC_CUPPING",
+            "no_positive_training_label:ABNORMAL",
+            "no_positive_training_label:AMD",
+            "no_positive_training_label:DR",
+            "no_positive_training_label:MYOPIC_FUNDUS",
+            "no_positive_training_label:OPTIC_DISC_CUPPING",
+            "no_train_supervision_for_output:ABNORMAL",
+            "no_train_supervision_for_output:AMD",
+            "no_train_supervision_for_output:DR",
+            "no_train_supervision_for_output:MYOPIC_FUNDUS",
+            "no_train_supervision_for_output:OPTIC_DISC_CUPPING",
+            "no_val_supervision_for_output:ABNORMAL",
+            "no_val_supervision_for_output:AMD",
+            "no_val_supervision_for_output:DR",
+            "no_val_supervision_for_output:MYOPIC_FUNDUS",
+            "no_val_supervision_for_output:OPTIC_DISC_CUPPING"
+          ]
+        },
+        {
+          "base_protocol": "strict_cross_domain",
+          "task": "landmark_localization",
+          "source": "IDRiD",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": false
+        },
+        {
+          "base_protocol": "strict_cross_domain",
+          "task": "vessel_segmentation",
+          "source": "FIVES",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": false
+        }
+      ]
+    },
+    "within_source": {
+      "default_system_eligible": false,
+      "independent_experiments_only": true,
+      "generated": [
+        {
+          "template": "image_quality_fives.json",
+          "base_protocol": "within_source",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 506,
+            "val": 89,
+            "test": 199,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "fives_IC": 506,
+              "fives_Blur": 506,
+              "fives_LC": 506
+            },
+            "val": {
+              "fives_IC": 89,
+              "fives_Blur": 89,
+              "fives_LC": 89
+            },
+            "test": {
+              "fives_IC": 199,
+              "fives_Blur": 199,
+              "fives_LC": 199
+            },
+            "external_test": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            }
+          },
+          "training_label_counts": {
+            "fives_IC": {
+              "0": 92,
+              "1": 414
+            },
+            "fives_Blur": {
+              "0": 79,
+              "1": 427
+            },
+            "fives_LC": {
+              "0": 16,
+              "1": 490
+            }
+          },
+          "config": "within_source/image_quality_fives_fives.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": false,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "landmark_localization.json",
+          "base_protocol": "within_source",
+          "task": "landmark_localization",
+          "kind": "landmark",
+          "source": "IDRiD",
+          "effective_records": {
+            "train": 322,
+            "val": 62,
+            "test": 120,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "fovea_center": 322,
+              "optic_disc_center": 322
+            },
+            "val": {
+              "fovea_center": 62,
+              "optic_disc_center": 62
+            },
+            "test": {
+              "fovea_center": 120,
+              "optic_disc_center": 120
+            },
+            "external_test": {
+              "fovea_center": 0,
+              "optic_disc_center": 0
+            }
+          },
+          "training_label_counts": {
+            "fovea_center": {},
+            "optic_disc_center": {}
+          },
+          "config": "within_source/landmark_localization_idrid.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": false,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        },
+        {
+          "template": "vessel_segmentation.json",
+          "base_protocol": "within_source",
+          "task": "vessel_segmentation",
+          "kind": "segmentation",
+          "source": "FIVES",
+          "effective_records": {
+            "train": 506,
+            "val": 89,
+            "test": 199,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "vessel": 506
+            },
+            "val": {
+              "vessel": 89
+            },
+            "test": {
+              "vessel": 199
+            },
+            "external_test": {
+              "vessel": 0
+            }
+          },
+          "training_label_counts": {
+            "vessel": {}
+          },
+          "config": "within_source/vessel_segmentation_fives.json",
+          "training_start_allowed": true,
+          "eligible_for_default_system": false,
+          "candidate_only": false,
+          "automatic_start_allowed": false,
+          "selected_external_evaluation": null
+        }
+      ],
+      "prohibited_or_unrouted": [
+        {
+          "template": "image_quality_fives.json",
+          "base_protocol": "within_source",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "DDR",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "val": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "test": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "external_test": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            }
+          },
+          "training_label_counts": {
+            "fives_IC": {},
+            "fives_Blur": {},
+            "fives_LC": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:fives_Blur",
+            "no_negative_training_label:fives_IC",
+            "no_negative_training_label:fives_LC",
+            "no_positive_training_label:fives_Blur",
+            "no_positive_training_label:fives_IC",
+            "no_positive_training_label:fives_LC",
+            "no_train_supervision_for_output:fives_Blur",
+            "no_train_supervision_for_output:fives_IC",
+            "no_train_supervision_for_output:fives_LC",
+            "no_val_supervision_for_output:fives_Blur",
+            "no_val_supervision_for_output:fives_IC",
+            "no_val_supervision_for_output:fives_LC"
+          ]
+        },
+        {
+          "template": "image_quality_fives.json",
+          "base_protocol": "within_source",
+          "task": "image_quality",
+          "kind": "multilabel",
+          "source": "EyeQ",
+          "effective_records": {
+            "train": 0,
+            "val": 0,
+            "test": 0,
+            "external_test": 0
+          },
+          "known_supervision_by_split": {
+            "train": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "val": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "test": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            },
+            "external_test": {
+              "fives_IC": 0,
+              "fives_Blur": 0,
+              "fives_LC": 0
+            }
+          },
+          "training_label_counts": {
+            "fives_IC": {},
+            "fives_Blur": {},
+            "fives_LC": {}
+          },
+          "training_start_allowed": false,
+          "reasons": [
+            "excluded_by_existing_template_source_filter",
+            "no_effective_train_supervision",
+            "no_effective_val_supervision",
+            "no_negative_training_label:fives_Blur",
+            "no_negative_training_label:fives_IC",
+            "no_negative_training_label:fives_LC",
+            "no_positive_training_label:fives_Blur",
+            "no_positive_training_label:fives_IC",
+            "no_positive_training_label:fives_LC",
+            "no_train_supervision_for_output:fives_Blur",
+            "no_train_supervision_for_output:fives_IC",
+            "no_train_supervision_for_output:fives_LC",
+            "no_val_supervision_for_output:fives_Blur",
+            "no_val_supervision_for_output:fives_IC",
+            "no_val_supervision_for_output:fives_LC"
+          ]
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "disc_cup_segmentation",
+          "source": "IDRiD",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "disc_cup_segmentation",
+          "source": "PAPILA",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "disc_cup_segmentation",
+          "source": "REFUGE",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "dr_grading",
+          "source": "APTOS2019",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "dr_grading",
+          "source": "DDR",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "dr_grading",
+          "source": "EyeQ",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "dr_grading",
+          "source": "IDRiD",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "glaucoma_classification",
+          "source": "FIVES",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "glaucoma_classification",
+          "source": "PAPILA",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "glaucoma_classification",
+          "source": "REFUGE",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": false
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "lesion_detection",
+          "source": "DDR",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "lesion_segmentation",
+          "source": "DDR",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "lesion_segmentation",
+          "source": "IDRiD",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "multidisease",
+          "source": "FIVES",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "multidisease",
+          "source": "RFMiD",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "multidisease",
+          "source": "RFMiD2",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        },
+        {
+          "base_protocol": "within_source",
+          "task": "odir_patient_multilabel",
+          "source": "ODIR-5K",
+          "training_start_allowed": false,
+          "reasons": [
+            "no_template_with_matching_task_and_base_protocol"
+          ],
+          "manifest_declared_trainable": true
+        }
+      ]
+    }
+  },
+  "templates": [
+    {
+      "filename": "disc_cup_segmentation.json",
+      "sha256": "9f4f4296fec1086e136100b09f07b1855f1a8fee1f9f310548ef24b8a615e75a",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "dr_grading.json",
+      "sha256": "ce1d5216ade0c7379de1dd77015a0fe72562023ee60d6556e02848330f75d1ba",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "dr_grading_dinov3_large.json",
+      "sha256": "2cadf90c9aa131d2b4d62b18c5e90b63092e62eff3cca3576adc1aa0751ce949",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "glaucoma_classification.json",
+      "sha256": "5e9a8ec5380c49d27f6f458df691eca8cf47715fdf4f7bda0ab8500b934ac548",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "image_quality_ddr.json",
+      "sha256": "689e4f5784512955cb9993a3a8a9b7cd4cf43aed53b2ab500047a6593a9482f4",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "image_quality_eyeq.json",
+      "sha256": "95fff6c10c695f6ce385bcc05815d50d84545ed673d2139909015803f92b7d64",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "image_quality_fives.json",
+      "sha256": "0fa2db9fd967b1417ed8455b2cace0ba3188788d6e0d4f577ce15a0e00cd3038",
+      "base_protocol": "within_source"
+    },
+    {
+      "filename": "landmark_localization.json",
+      "sha256": "7a00be8593162c4dac639687fd1a7da73a3b838424d2972787ff3d7af534face",
+      "base_protocol": "within_source"
+    },
+    {
+      "filename": "lesion_detection.json",
+      "sha256": "f7c06311a5e3eb2ec212d4c62267b92feb8924dbe52efb2ac8e5af9a2bebfa9a",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "lesion_segmentation.json",
+      "sha256": "9f0fcc6ab85bab95b188d98e4a8b7f027b4d88b12a6e340ed349b07da37d345a",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "multidisease.json",
+      "sha256": "28675af55ef060374b6cede9487a194a4833348e74791c10486310a379383030",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "odir_patient_multilabel.json",
+      "sha256": "ac80371a98db48dc5de2cb3861e27846bf6b5411eb20a9c5539b1371e1dd2a12",
+      "base_protocol": "strict_cross_domain"
+    },
+    {
+      "filename": "vessel_segmentation.json",
+      "sha256": "8090619395c6c2976a02f6560bc90a4695eee259db5811f5dff46bcf14fd2046",
+      "base_protocol": "within_source"
+    }
+  ],
+  "rules": [
+    "Each config has exactly one training/validation/test source in data.datasets.",
+    "An explicit external_dataset is used only for external_test, never concatenated into train/val/test.",
+    "EyeQ/EyePACS DR records remain audit-only by default; DR training candidates are DDR and APTOS2019.",
+    "Weights use the isolated source's known training labels only; missing training classes/positives/negatives prohibit default training.",
+    "Models, augmentation and training hyperparameters are preserved from legacy templates; no automatic B/L architecture replacement occurs.",
+    "Within-source FIVES/IDRiD experts are independent experiments and must not be combined with the strict system while claiming untouched source evaluation.",
+    "One image can support multiple tasks, but task label routing remains independent.",
+    "Only the named default is eligible for automatic start; DINOv3-L configs are opt-in candidates."
+  ],
+  "generated_config_count": 16,
+  "blocked_or_unrouted_count": 35
+}

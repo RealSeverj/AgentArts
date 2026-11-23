@@ -1,0 +1,45 @@
+{
+  "seed": 20261113,
+  "task": "lesion_detection",
+  "kind": "detection",
+  "labels": [
+    "EX",
+    "HE",
+    "MA",
+    "SE"
+  ],
+  "data": {
+    "protocol": "strict_cross_domain",
+    "box_coordinate_mode": "source_xyxy_no_offset"
+  },
+  "model": {
+    "name": "fasterrcnn_mobilenet_v3_large_fpn",
+    "pretrained": true,
+    "img_size": 1024
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "vertical_flip": 0.0
+  },
+  "loss": {},
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 40,
+    "batch_size": 1,
+    "grad_accum_steps": 8,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 0.0001,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 0,
+    "full_finetune_epoch": 0,
+    "best_metric": "map",
+    "best_mode": "max",
+    "log_every": 25
+  },
+  "notes": "Experimental continuous xyxy using unchanged source numbers; source pixel origin is undocumented, so this is not a claim of official VOC coordinate semantics. COCO-style AP after image resizing, maxDets=100."
+}

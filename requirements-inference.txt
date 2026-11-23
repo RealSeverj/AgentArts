@@ -1,0 +1,9 @@
+# Install torch==2.6.0 + torchvision==0.21.0 separately (CPU or CUDA 11.8).
+timm==1.0.22
+numpy==1.26.4
+Pillow==11.3.0
+fastapi==0.162.5
+pydantic==2.13.5
+uvicorn==0.42.0
+urllib3==2.8.0
+certifi==2026.7.22

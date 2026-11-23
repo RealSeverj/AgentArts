@@ -1,0 +1,534 @@
+{
+  "labels": [
+    "DR",
+    "AMD",
+    "MYOPIC_FUNDUS",
+    "OPTIC_DISC_CUPPING",
+    "ABNORMAL"
+  ],
+  "selection": "validation_five_label_macro_ap",
+  "selected": "equal_mean",
+  "original_sha256": "f5352ccb0834b41a2d9e6ed6d43c80b7b7b2e87dcfa1c0b3690f96eddafca640",
+  "parent_sha256": "c64af5c437417efc6d9b3bd96072db1216f6de6e7798927a3aa74b00822e29a7",
+  "head_sha256": "98aa1099dc91e1bc310648885e426285e375b2c810ae5e9eb0c775cfddf102c1",
+  "manifest_index_sha256": "3afd9d7bef3e818f4f0e6d0e9301f0c2f83cef6bc186d3509a2a83f733a8d0ad",
+  "validation_scores_sha256": "8d6dbf0f80d45f216a46eed3daceddd65aef23d710195cc32fd0eb9b4347295f",
+  "candidates": {
+    "original": {
+      "metrics": {
+        "macro_ap": 0.8095972878982053,
+        "macro_f1": 0.6808386128234624,
+        "per_label": {
+          "DR": {
+            "n": 634,
+            "positive": 127,
+            "negative": 507,
+            "weight_sum": 634.0,
+            "auroc": 0.9697619158551927,
+            "auprc": 0.91126307510591,
+            "sensitivity": 0.905511811023622,
+            "specificity": 0.9132149901380671,
+            "f1": 0.8041958041958042,
+            "threshold": 0.043762970715761185,
+            "working_point_met": true
+          },
+          "AMD": {
+            "n": 634,
+            "positive": 38,
+            "negative": 596,
+            "weight_sum": 634.0,
+            "auroc": 0.9748763687742847,
+            "auprc": 0.704726419200926,
+            "sensitivity": 0.9210526315789473,
+            "specificity": 0.9278523489932886,
+            "f1": 0.603448275862069,
+            "threshold": 0.005200723651796579,
+            "working_point_met": true
+          },
+          "MYOPIC_FUNDUS": {
+            "n": 634,
+            "positive": 34,
+            "negative": 600,
+            "weight_sum": 634.0,
+            "auroc": 0.9919117647058823,
+            "auprc": 0.8769738266938842,
+            "sensitivity": 0.9411764705882353,
+            "specificity": 0.9683333333333334,
+            "f1": 0.7529411764705882,
+            "threshold": 0.06336989253759384,
+            "working_point_met": true
+          },
+          "OPTIC_DISC_CUPPING": {
+            "n": 634,
+            "positive": 71,
+            "negative": 563,
+            "weight_sum": 634.0,
+            "auroc": 0.8587796762814899,
+            "auprc": 0.5689090242711891,
+            "sensitivity": 0.9154929577464789,
+            "specificity": 0.4920071047957371,
+            "f1": 0.3080568720379147,
+            "threshold": 1.2753240298479795e-05,
+            "working_point_met": false
+          },
+          "ABNORMAL": {
+            "n": 634,
+            "positive": 500,
+            "negative": 134,
+            "weight_sum": 634.0,
+            "auroc": 0.9490820895522388,
+            "auprc": 0.9861140942191173,
+            "sensitivity": 0.9,
+            "specificity": 0.9104477611940298,
+            "f1": 0.9355509355509356,
+            "threshold": 0.8418160676956177,
+            "working_point_met": true
+          }
+        },
+        "working_points_met": 4,
+        "labeled_outputs": 5
+      },
+      "thresholds": {
+        "DR": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 127,
+          "validation_negative": 507,
+          "threshold": 0.043762970715761185,
+          "validation_tp": 115,
+          "validation_fp": 44,
+          "status": "met"
+        },
+        "AMD": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 38,
+          "validation_negative": 596,
+          "threshold": 0.005200723651796579,
+          "validation_tp": 35,
+          "validation_fp": 43,
+          "status": "met"
+        },
+        "MYOPIC_FUNDUS": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 34,
+          "validation_negative": 600,
+          "threshold": 0.06336989253759384,
+          "validation_tp": 32,
+          "validation_fp": 19,
+          "status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 71,
+          "validation_negative": 563,
+          "threshold": 1.2753240298479795e-05,
+          "validation_tp": 65,
+          "validation_fp": 286,
+          "status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 500,
+          "validation_negative": 134,
+          "threshold": 0.8418160676956177,
+          "validation_tp": 450,
+          "validation_fp": 12,
+          "status": "met"
+        }
+      }
+    },
+    "original_flip_mean": {
+      "metrics": {
+        "macro_ap": 0.8153600459499094,
+        "macro_f1": 0.6878500352332129,
+        "per_label": {
+          "DR": {
+            "n": 634,
+            "positive": 127,
+            "negative": 507,
+            "weight_sum": 634.0,
+            "auroc": 0.970755874450605,
+            "auprc": 0.911410575975697,
+            "sensitivity": 0.9133858267716536,
+            "specificity": 0.8954635108481263,
+            "f1": 0.7837837837837838,
+            "threshold": 0.027446400374174118,
+            "working_point_met": false
+          },
+          "AMD": {
+            "n": 634,
+            "positive": 38,
+            "negative": 596,
+            "weight_sum": 634.0,
+            "auroc": 0.9757594489579653,
+            "auprc": 0.7147510837856986,
+            "sensitivity": 0.9210526315789473,
+            "specificity": 0.9211409395973155,
+            "f1": 0.5833333333333334,
+            "threshold": 0.005162366200238466,
+            "working_point_met": true
+          },
+          "MYOPIC_FUNDUS": {
+            "n": 634,
+            "positive": 34,
+            "negative": 600,
+            "weight_sum": 634.0,
+            "auroc": 0.9930392156862745,
+            "auprc": 0.8959360881986344,
+            "sensitivity": 0.9117647058823529,
+            "specificity": 0.98,
+            "f1": 0.8051948051948052,
+            "threshold": 0.20548130571842194,
+            "working_point_met": true
+          },
+          "OPTIC_DISC_CUPPING": {
+            "n": 634,
+            "positive": 71,
+            "negative": 563,
+            "weight_sum": 634.0,
+            "auroc": 0.8692867685687838,
+            "auprc": 0.5685455796988353,
+            "sensitivity": 0.9014084507042254,
+            "specificity": 0.5470692717584369,
+            "f1": 0.3282051282051282,
+            "threshold": 2.2284259102889337e-05,
+            "working_point_met": false
+          },
+          "ABNORMAL": {
+            "n": 634,
+            "positive": 500,
+            "negative": 134,
+            "weight_sum": 634.0,
+            "auroc": 0.95,
+            "auprc": 0.9861569020906812,
+            "sensitivity": 0.904,
+            "specificity": 0.917910447761194,
+            "f1": 0.9387331256490135,
+            "threshold": 0.8099167346954346,
+            "working_point_met": true
+          }
+        },
+        "working_points_met": 3,
+        "labeled_outputs": 5
+      },
+      "thresholds": {
+        "DR": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 127,
+          "validation_negative": 507,
+          "threshold": 0.027446400374174118,
+          "validation_tp": 116,
+          "validation_fp": 53,
+          "status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 38,
+          "validation_negative": 596,
+          "threshold": 0.005162366200238466,
+          "validation_tp": 35,
+          "validation_fp": 47,
+          "status": "met"
+        },
+        "MYOPIC_FUNDUS": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 34,
+          "validation_negative": 600,
+          "threshold": 0.20548130571842194,
+          "validation_tp": 31,
+          "validation_fp": 12,
+          "status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 71,
+          "validation_negative": 563,
+          "threshold": 2.2284259102889337e-05,
+          "validation_tp": 64,
+          "validation_fp": 255,
+          "status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 500,
+          "validation_negative": 134,
+          "threshold": 0.8099167346954346,
+          "validation_tp": 452,
+          "validation_fp": 11,
+          "status": "met"
+        }
+      }
+    },
+    "fundus_linear": {
+      "metrics": {
+        "macro_ap": 0.8038004005968613,
+        "macro_f1": 0.6491976780249098,
+        "per_label": {
+          "DR": {
+            "n": 634,
+            "positive": 127,
+            "negative": 507,
+            "weight_sum": 634.0,
+            "auroc": 0.9686747736414605,
+            "auprc": 0.9041379126735901,
+            "sensitivity": 0.905511811023622,
+            "specificity": 0.8954635108481263,
+            "f1": 0.7796610169491526,
+            "threshold": 0.11504104301370001,
+            "working_point_met": false
+          },
+          "AMD": {
+            "n": 634,
+            "positive": 38,
+            "negative": 596,
+            "weight_sum": 634.0,
+            "auroc": 0.9685623454609679,
+            "auprc": 0.6470583775260035,
+            "sensitivity": 0.9210526315789473,
+            "specificity": 0.8976510067114094,
+            "f1": 0.5223880597014925,
+            "threshold": 0.003066294459928652,
+            "working_point_met": false
+          },
+          "MYOPIC_FUNDUS": {
+            "n": 634,
+            "positive": 34,
+            "negative": 600,
+            "weight_sum": 634.0,
+            "auroc": 0.9858823529411764,
+            "auprc": 0.8566111448497764,
+            "sensitivity": 0.9117647058823529,
+            "specificity": 0.94,
+            "f1": 0.6138613861386139,
+            "threshold": 0.010035943029643127,
+            "working_point_met": true
+          },
+          "OPTIC_DISC_CUPPING": {
+            "n": 634,
+            "positive": 71,
+            "negative": 563,
+            "weight_sum": 634.0,
+            "auroc": 0.8870487579115902,
+            "auprc": 0.6230684023190082,
+            "sensitivity": 0.9014084507042254,
+            "specificity": 0.6571936056838366,
+            "f1": 0.3902439024390244,
+            "threshold": 0.00039269205031414254,
+            "working_point_met": false
+          },
+          "ABNORMAL": {
+            "n": 634,
+            "positive": 500,
+            "negative": 134,
+            "weight_sum": 634.0,
+            "auroc": 0.9540000000000001,
+            "auprc": 0.988126165615928,
+            "sensitivity": 0.906,
+            "specificity": 0.917910447761194,
+            "f1": 0.9398340248962656,
+            "threshold": 0.8114882809436504,
+            "working_point_met": true
+          }
+        },
+        "working_points_met": 2,
+        "labeled_outputs": 5
+      },
+      "thresholds": {
+        "DR": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 127,
+          "validation_negative": 507,
+          "threshold": 0.11504104301370001,
+          "validation_tp": 115,
+          "validation_fp": 53,
+          "status": "false_positive_limit_exceeded"
+        },
+        "AMD": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 38,
+          "validation_negative": 596,
+          "threshold": 0.003066294459928652,
+          "validation_tp": 35,
+          "validation_fp": 61,
+          "status": "false_positive_limit_exceeded"
+        },
+        "MYOPIC_FUNDUS": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 34,
+          "validation_negative": 600,
+          "threshold": 0.010035943029643127,
+          "validation_tp": 31,
+          "validation_fp": 36,
+          "status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 71,
+          "validation_negative": 563,
+          "threshold": 0.00039269205031414254,
+          "validation_tp": 64,
+          "validation_fp": 193,
+          "status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 500,
+          "validation_negative": 134,
+          "threshold": 0.8114882809436504,
+          "validation_tp": 453,
+          "validation_fp": 11,
+          "status": "met"
+        }
+      }
+    },
+    "equal_mean": {
+      "metrics": {
+        "macro_ap": 0.8208436498266096,
+        "macro_f1": 0.7049324861124998,
+        "per_label": {
+          "DR": {
+            "n": 634,
+            "positive": 127,
+            "negative": 507,
+            "weight_sum": 634.0,
+            "auroc": 0.9717032412368571,
+            "auprc": 0.9127620071373624,
+            "sensitivity": 0.905511811023622,
+            "specificity": 0.9171597633136095,
+            "f1": 0.8098591549295775,
+            "threshold": 0.16397267586120257,
+            "working_point_met": true
+          },
+          "AMD": {
+            "n": 634,
+            "positive": 38,
+            "negative": 596,
+            "weight_sum": 634.0,
+            "auroc": 0.9769957612151183,
+            "auprc": 0.6852196977976298,
+            "sensitivity": 0.9210526315789473,
+            "specificity": 0.9328859060402684,
+            "f1": 0.6194690265486725,
+            "threshold": 0.01845198521047929,
+            "working_point_met": true
+          },
+          "MYOPIC_FUNDUS": {
+            "n": 634,
+            "positive": 34,
+            "negative": 600,
+            "weight_sum": 634.0,
+            "auroc": 0.9923529411764705,
+            "auprc": 0.8928844459089784,
+            "sensitivity": 0.9411764705882353,
+            "specificity": 0.97,
+            "f1": 0.7619047619047619,
+            "threshold": 0.10769358021442024,
+            "working_point_met": true
+          },
+          "OPTIC_DISC_CUPPING": {
+            "n": 634,
+            "positive": 71,
+            "negative": 563,
+            "weight_sum": 634.0,
+            "auroc": 0.8978310359492657,
+            "auprc": 0.6243436012733364,
+            "sensitivity": 0.9014084507042254,
+            "specificity": 0.6625222024866785,
+            "f1": 0.39384615384615385,
+            "threshold": 0.0003980038419356666,
+            "working_point_met": false
+          },
+          "ABNORMAL": {
+            "n": 634,
+            "positive": 500,
+            "negative": 134,
+            "weight_sum": 634.0,
+            "auroc": 0.9574328358208954,
+            "auprc": 0.9890084970157405,
+            "sensitivity": 0.902,
+            "specificity": 0.9328358208955224,
+            "f1": 0.9395833333333333,
+            "threshold": 0.7634625913944286,
+            "working_point_met": true
+          }
+        },
+        "working_points_met": 4,
+        "labeled_outputs": 5
+      },
+      "thresholds": {
+        "DR": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 127,
+          "validation_negative": 507,
+          "threshold": 0.16397267586120257,
+          "validation_tp": 115,
+          "validation_fp": 42,
+          "status": "met"
+        },
+        "AMD": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 38,
+          "validation_negative": 596,
+          "threshold": 0.01845198521047929,
+          "validation_tp": 35,
+          "validation_fp": 40,
+          "status": "met"
+        },
+        "MYOPIC_FUNDUS": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 34,
+          "validation_negative": 600,
+          "threshold": 0.10769358021442024,
+          "validation_tp": 32,
+          "validation_fp": 18,
+          "status": "met"
+        },
+        "OPTIC_DISC_CUPPING": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 71,
+          "validation_negative": 563,
+          "threshold": 0.0003980038419356666,
+          "validation_tp": 64,
+          "validation_fp": 190,
+          "status": "false_positive_limit_exceeded"
+        },
+        "ABNORMAL": {
+          "min_recall": 0.9,
+          "max_fpr": 0.1,
+          "validation_positive": 500,
+          "validation_negative": 134,
+          "threshold": 0.7634625913944286,
+          "validation_tp": 451,
+          "validation_fp": 9,
+          "status": "met"
+        }
+      }
+    }
+  },
+  "validation_images": 634,
+  "train_images": 1878,
+  "tie_preference": [
+    "original",
+    "original_flip_mean",
+    "fundus_linear",
+    "equal_mean"
+  ]
+}

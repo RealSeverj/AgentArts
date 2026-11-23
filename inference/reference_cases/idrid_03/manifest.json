@@ -1,0 +1,67 @@
+{
+  "source_image_id": "IDRiD_03",
+  "grading_image_id": "IDRiD_369",
+  "dataset": "IDRiD",
+  "dataset_split": "Original IDRiD A and B training sets",
+  "image_sha256": "092d05e8bb47568b511d896dd8ec79dccf9f5dd53bcb8d3ce5ec1a6c38d3e1b3",
+  "image_path": "data/IDRiD/extracted/A. Segmentation/1. Original Images/a. Training Set/IDRiD_03.jpg",
+  "grading_image_sha256": "092d05e8bb47568b511d896dd8ec79dccf9f5dd53bcb8d3ce5ec1a6c38d3e1b3",
+  "grading_image_path": "data/IDRiD/extracted/B. Disease Grading/1. Original Images/a. Training Set/IDRiD_369.jpg",
+  "width": 4288,
+  "height": 2848,
+  "dr_grade": 3,
+  "grading_source_path": "data/IDRiD/extracted/B. Disease Grading/2. Groundtruths/a. IDRiD_Disease Grading_Training Labels.csv",
+  "grading_source_sha256": "789fb5a5aca296f6e01db9eb930cc41a063c681c284dbf3675628afc2a2d4ffe",
+  "grade_origin": "dataset_expert_reference",
+  "annotation_origin": "dataset_expert_pixel_masks",
+  "mask_file": "masks.png",
+  "mask_sha256": "892e57acfed0385532c10acef3fb81dcf21d6b772fb6bd504b88dc16a9829386",
+  "mask_encoding": "Single-channel 8-bit PNG; per-pixel OR of bits MA=1, HE=2, EX=4, SE=8. Original full resolution; test (pixel & bit) != 0 to recover each source binary mask. Origin top left.",
+  "labels": [
+    {
+      "code": "MA",
+      "name_zh": "微动脉瘤",
+      "bit": 1,
+      "color": "#53E8FF",
+      "source_path": "data/IDRiD/extracted/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/IDRiD_03_MA.tif",
+      "source_sha256": "0eafb4d39e47fd7f503ca64b0f951ff45a363be89dcd185c5d12b41bb4d7c832",
+      "positive_pixels": 11288
+    },
+    {
+      "code": "HE",
+      "name_zh": "视网膜出血",
+      "bit": 2,
+      "color": "#FF7397",
+      "source_path": "data/IDRiD/extracted/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/IDRiD_03_HE.tif",
+      "source_sha256": "a8b9292e8226bcf3b9e86a1f4bec6957525b0c70ca84c02258d73e0441616234",
+      "positive_pixels": 162605
+    },
+    {
+      "code": "EX",
+      "name_zh": "硬性渗出",
+      "bit": 4,
+      "color": "#FFD64D",
+      "source_path": "data/IDRiD/extracted/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/IDRiD_03_EX.tif",
+      "source_sha256": "7c45232d8130046ebb969c404c006e8fc239ce3d3c1abe3da9fe4f86f9e8d7bb",
+      "positive_pixels": 301586
+    },
+    {
+      "code": "SE",
+      "name_zh": "软性渗出（棉絮斑）",
+      "bit": 8,
+      "color": "#74F49A",
+      "source_path": "data/IDRiD/extracted/A. Segmentation/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/IDRiD_03_SE.tif",
+      "source_sha256": "da77adda7e59be6ead53c477139b50cec59a82687319bc3614629b5200f18519",
+      "positive_pixels": 3318
+    }
+  ],
+  "source": "Porwal P. et al., Indian Diabetic Retinopathy Image Dataset (IDRiD), IEEE DataPort, 2018.",
+  "copyright": "IDRiD dataset © Prasanna Porwal, Samiksha Pachade and Manesh Kokare.",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "source_license_path": "data/IDRiD/extracted/A. Segmentation/LICENSE.txt",
+  "dataset_url": "https://doi.org/10.21227/H25W98",
+  "dataset_paper": "https://doi.org/10.3390/data3030025",
+  "data_acquired_from": "https://zenodo.org/records/17219542",
+  "modifications": "Four original binary expert TIFF masks packed losslessly into four independent bits; figure uses scaled original and colored outlines from the same masks."
+}

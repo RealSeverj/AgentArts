@@ -1,0 +1,42 @@
+{
+  "selected": "historical",
+  "validation": {
+    "historical": {
+      "metrics": {
+        "ap": 0.74459937949619,
+        "auroc": 0.8524332810047096,
+        "tp": 12,
+        "fp": 27,
+        "fn": 1,
+        "tn": 22,
+        "sensitivity": 0.9230769230769231,
+        "specificity": 0.4489795918367347,
+        "precision": 0.3076923076923077,
+        "f1": 0.46153846153846156
+      },
+      "threshold": 0.14928317070007324,
+      "checkpoint_sha256": "378fc1a1e15e4f67e016bacaa49fd1b81e016c973043919e3a0a290edadc1aca",
+      "thresholds_sha256": "02f18eb3495d4362c81f43f4ae2d1f354a8fc4cce87b405f417c627ab3cda2c2",
+      "val_predictions_sha256": "f79ca15aa2b48817c51335c9935b7b3ec4488108ccbd90abce16e37f5acbebc8"
+    },
+    "glaucoma_vitl392_letterbox": {
+      "metrics": {
+        "ap": 0.6956885180965449,
+        "auroc": 0.7974882260596546,
+        "tp": 12,
+        "fp": 40,
+        "fn": 1,
+        "tn": 9,
+        "sensitivity": 0.9230769230769231,
+        "specificity": 0.1836734693877551,
+        "precision": 0.23076923076923078,
+        "f1": 0.36923076923076925
+      },
+      "threshold": 1.6187581422855146e-05,
+      "checkpoint_sha256": "5ceb83f848122808b4ede90053005c75e91e3f33e25e9c45f3b915819de2c0ec",
+      "thresholds_sha256": "b18e8da826982d6a14a87a8268fc4cc64aca5a26b0548baaff8ea1d4feb3776c",
+      "val_predictions_sha256": "ceacc44693244735cd3a4456e2f05e878371f03aca45cafc978d1c611f64b216"
+    }
+  },
+  "policy_sha256": "898d3fefcfb408f4c52ae6076fc04b140fed22421bde9bc70b52971c44354c7f"
+}

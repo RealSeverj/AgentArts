@@ -1,0 +1,65 @@
+[
+  {
+    "source": "02_模型训练与评估/01_在用模型/01_糖网五级分级/best.pt",
+    "destination": "02_模型训练与评估/01_在用模型/01_糖网五级分级/best.pt",
+    "role": "dr_grading",
+    "bytes": 1617636556,
+    "sha256": "a85acf367a34361986739e93030bc5c51a390ddd33c63d49da883abf1562d4ab"
+  },
+  {
+    "source": "02_模型训练与评估/01_在用模型/02_眼底图像质控/quality_best.pt",
+    "destination": "02_模型训练与评估/01_在用模型/02_眼底图像质控/quality_best.pt",
+    "role": "quality",
+    "bytes": 571555732,
+    "sha256": "fa5ee22b483b09c8dec9050455b5e6010d51c2ecced17d0a55982657bdd66f8f"
+  },
+  {
+    "source": "02_模型训练与评估/01_在用模型/03_眼底多异常五标签/multidisease_best.pt",
+    "destination": "02_模型训练与评估/01_在用模型/03_眼底多异常五标签/multidisease_best.pt",
+    "role": "multidisease",
+    "bytes": 571574356,
+    "sha256": "f5352ccb0834b41a2d9e6ed6d43c80b7b7b2e87dcfa1c0b3690f96eddafca640"
+  },
+  {
+    "source": "02_模型训练与评估/01_在用模型/04_视盘视杯分割/disc_refuge_best.pt",
+    "destination": "02_模型训练与评估/01_在用模型/04_视盘视杯分割/disc_refuge_best.pt",
+    "role": "disc_cup_segmentation",
+    "bytes": 94282152,
+    "sha256": "bb25840047eedca5b115c3a81c9f7b8e3e73a8a0729cc6c67b9f55b1c38ef5e7"
+  },
+  {
+    "source": "02_模型训练与评估/07_模型5云端优化结果_20261122/large_full/best.pt",
+    "destination": "02_模型训练与评估/07_模型5云端优化结果_20261122/large_full/best.pt",
+    "role": "model5 global_vitl",
+    "bytes": 1215237062,
+    "sha256": "20ccbb5a69bfdcf060abc76caa50e1e7b6170fcf95a5614f8447635ce8c4cc3f"
+  },
+  {
+    "source": "02_模型训练与评估/07_模型5云端优化结果_20261122/base_disc/best.pt",
+    "destination": "02_模型训练与评估/07_模型5云端优化结果_20261122/base_disc/best.pt",
+    "role": "model5 dual_vitb",
+    "bytes": 344626830,
+    "sha256": "602e675dadcc4ef6818bf6693494c4239630d43c75e66643a5a815e07acd4f21"
+  },
+  {
+    "source": "02_模型训练与评估/05_本轮训练结果_20261122/glaucoma_partial/best.pt",
+    "destination": "02_模型训练与评估/05_本轮训练结果_20261122/glaucoma_partial/best.pt",
+    "role": "model6 selected glaucoma",
+    "bytes": 344583926,
+    "sha256": "378fc1a1e15e4f67e016bacaa49fd1b81e016c973043919e3a0a290edadc1aca"
+  },
+  {
+    "source": "cloud_upload/pretrained/dinov2_vitb14_pretrain.pth",
+    "destination": "cloud_upload/pretrained/dinov2_vitb14_pretrain.pth",
+    "role": "model6 required backbone",
+    "bytes": 346378731,
+    "sha256": "0b8b82f85de91b424aded121c7e1dcc2b7bc6d0adeea651bf73a13307fad8c73"
+  },
+  {
+    "source": "inference_runtime/lesion_localization/model.safetensors",
+    "destination": "inference_runtime/lesion_localization/model.safetensors",
+    "role": "lesion segmenter",
+    "bytes": 138428676,
+    "sha256": "a7a7cb45b92328f7c9a8e581eec3944fd435d37fae8cbf340b1319c5f987c6d2"
+  }
+]

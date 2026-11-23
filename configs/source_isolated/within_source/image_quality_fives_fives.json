@@ -1,0 +1,87 @@
+{
+  "seed": 20261113,
+  "task": "image_quality",
+  "kind": "multilabel",
+  "labels": [
+    "fives_IC",
+    "fives_Blur",
+    "fives_LC"
+  ],
+  "data": {
+    "protocol": "within_source",
+    "datasets": [
+      "FIVES"
+    ],
+    "source_isolated": true,
+    "isolation_root": "prepared/source_isolated",
+    "isolation_manifest_sha256": "219a369b440992d30d1e6baa036de3616009c69e16a209b25951864b625a2362"
+  },
+  "model": {
+    "name": "vit_small_patch14_dinov2.lvd142m",
+    "pretrained": true,
+    "img_size": 392,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "grad_checkpointing": true
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "rotation_degrees": 0,
+    "color_jitter": 0
+  },
+  "loss": {
+    "pos_weight": [
+      0.4714045207910317,
+      0.4301298752724269,
+      0.18070158058105026
+    ],
+    "training_label_counts": {
+      "fives_IC": {
+        "0": 92,
+        "1": 414
+      },
+      "fives_Blur": {
+        "0": 79,
+        "1": 427
+      },
+      "fives_LC": {
+        "0": 16,
+        "1": 490
+      }
+    },
+    "weighting_source": {
+      "dataset": "FIVES",
+      "base_protocol": "within_source",
+      "split": "train",
+      "manifest_sha256": "ae2f8da1b64930e4711d7cc20488869953bd39c13a601ee2c43b512eb90ee450"
+    },
+    "weighting_note": "Recomputed from this source's known training labels only: multiclass sqrt inverse frequency normalized to mean 1; multilabel sqrt(negative/positive) capped at 10. No validation/test labels used for weighting."
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 30,
+    "batch_size": 4,
+    "grad_accum_steps": 4,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 0.0001,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 1,
+    "full_finetune_epoch": 1,
+    "best_metric": "macro_auprc",
+    "best_mode": "max",
+    "log_every": 25
+  }
+}

@@ -1,0 +1,22 @@
+# Python & environments
+__pycache__/
+*.py[cod]
+.venv/
+.inference-gpu-venv/
+
+# Runtime state, local outputs & secrets
+output/
+agent/agent_ready*/
+inference_runtime/*.dpapi
+inference_runtime/*.sqlite3*
+inference_runtime/local_gpu/server_process.json
+inference_runtime/local_gpu/server.*.log
+inference_runtime/local_gpu/tunnel-state.json
+inference_runtime/local_gpu/tunnel_logs/
+inference_runtime/local_gpu/tools/
+
+# Large model weights & binary vendor wheels (fingerprints tracked in 模型权重索引.json & 主包清单.json)
+*.pt
+*.pth
+*.safetensors
+inference_runtime/lesion_localization/vendor/

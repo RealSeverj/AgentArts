@@ -1,0 +1,64 @@
+{
+  "seed": 20261113,
+  "task": "disc_cup_segmentation",
+  "kind": "segmentation",
+  "labels": [
+    "optic_cup",
+    "optic_disc"
+  ],
+  "data": {
+    "protocol": "strict_cross_domain",
+    "expert": "expert_1",
+    "datasets": [
+      "PAPILA"
+    ],
+    "source_isolated": true,
+    "isolation_root": "prepared/source_isolated",
+    "isolation_manifest_sha256": "219a369b440992d30d1e6baa036de3616009c69e16a209b25951864b625a2362"
+  },
+  "model": {
+    "name": "unet",
+    "pretrained": false,
+    "img_size": 512,
+    "base_channels": 32,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "vertical_flip": 0.0,
+    "patch_size": null
+  },
+  "loss": {
+    "bce_weight": 1.0,
+    "dice_weight": 1.0
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 50,
+    "batch_size": 2,
+    "grad_accum_steps": 4,
+    "workers": 6,
+    "amp": "fp16",
+    "lr": 0.0003,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 0,
+    "full_finetune_epoch": 0,
+    "best_metric": "macro_dice",
+    "best_mode": "max",
+    "log_every": 25
+  },
+  "notes": "UNTRAINED experiment configuration. Separate later source alternative. REFUGE and PAPILA are independent source-isolated experiments, never merged or automatically concatenated. Use REFUGE first; PAPILA is an independent later experiment, not continuation from a REFUGE-trained model. U-Net is randomly initialized (no pretrained backbone); 512x512, base_channels32, 50 epochs, per-GPU batch2 with gradient accumulation4 (effective batch16 on two GPUs). Preserve the original image/mask aligned stretch resize and matched augmentation; do not apply DR black-border crop/letterbox to segmentation images without the corresponding mask geometry. Validation/test evaluate the whole image resized to 512, not native-resolution/sliding-window metrics. All original source labels, expert selection, loss settings and audited splits are retained. No formal training or GPU benchmark has been performed for this experiment."
+}

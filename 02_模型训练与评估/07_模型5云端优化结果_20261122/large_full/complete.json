@@ -1,0 +1,6 @@
+{
+  "best_epoch": 16,
+  "best_validation_macro_ap": 0.6740004400324332,
+  "epochs": 30,
+  "checkpoint_sha256": "20ccbb5a69bfdcf060abc76caa50e1e7b6170fcf95a5614f8447635ce8c4cc3f"
+}

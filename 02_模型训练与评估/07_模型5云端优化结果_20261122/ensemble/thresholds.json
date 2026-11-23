@@ -1,0 +1,131 @@
+{
+  "labels": [
+    "RVO",
+    "LS",
+    "DN",
+    "AMD",
+    "CSR",
+    "OPTIC_DISC_CUPPING",
+    "ODE",
+    "ODP",
+    "MYOPIC_FUNDUS",
+    "TSLN",
+    "ABNORMAL"
+  ],
+  "checkpoint_sha256": "22568735bd84cced4eb5be06ab8ef45139a35d58ea139994681338d4171a2edf",
+  "val_manifest_sha256": "9f21c8e0cc337d6cf820f44329452fd3987fcf72487f1add227bbc8051fb379a",
+  "val_predictions_sha256": "086c2aae0fe984339ec05b5f62fef25a664c285dca3caa882d2ffbca824c3d17",
+  "rule": "min FP among recall-qualified thresholds, then max TP, then highest threshold; p >= t",
+  "per_label": {
+    "RVO": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 31,
+      "validation_negative": 603,
+      "threshold": 0.011820118874311447,
+      "validation_tp": 28,
+      "validation_fp": 44,
+      "status": "met"
+    },
+    "LS": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 17,
+      "validation_negative": 617,
+      "threshold": 0.0009931727981893346,
+      "validation_tp": 16,
+      "validation_fp": 106,
+      "status": "false_positive_limit_exceeded"
+    },
+    "DN": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 46,
+      "validation_negative": 588,
+      "threshold": 0.0675105344853364,
+      "validation_tp": 42,
+      "validation_fp": 111,
+      "status": "false_positive_limit_exceeded"
+    },
+    "AMD": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 38,
+      "validation_negative": 596,
+      "threshold": 0.006723892467562109,
+      "validation_tp": 35,
+      "validation_fp": 66,
+      "status": "false_positive_limit_exceeded"
+    },
+    "CSR": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 11,
+      "validation_negative": 623,
+      "threshold": 0.0720701176323928,
+      "validation_tp": 10,
+      "validation_fp": 10,
+      "status": "met"
+    },
+    "OPTIC_DISC_CUPPING": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 71,
+      "validation_negative": 563,
+      "threshold": 0.0009663661439844873,
+      "validation_tp": 64,
+      "validation_fp": 190,
+      "status": "false_positive_limit_exceeded"
+    },
+    "ODE": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 21,
+      "validation_negative": 613,
+      "threshold": 0.030557316611520946,
+      "validation_tp": 19,
+      "validation_fp": 41,
+      "status": "met"
+    },
+    "ODP": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 26,
+      "validation_negative": 608,
+      "threshold": 0.0009341061486338731,
+      "validation_tp": 24,
+      "validation_fp": 274,
+      "status": "false_positive_limit_exceeded"
+    },
+    "MYOPIC_FUNDUS": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 34,
+      "validation_negative": 600,
+      "threshold": 0.07395362388342619,
+      "validation_tp": 31,
+      "validation_fp": 33,
+      "status": "met"
+    },
+    "TSLN": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 63,
+      "validation_negative": 571,
+      "threshold": 0.05557347844296601,
+      "validation_tp": 59,
+      "validation_fp": 44,
+      "status": "met"
+    },
+    "ABNORMAL": {
+      "min_recall": 0.9,
+      "max_fpr": 0.1,
+      "validation_positive": 500,
+      "validation_negative": 134,
+      "threshold": 0.7770775258541107,
+      "validation_tp": 451,
+      "validation_fp": 13,
+      "status": "met"
+    }
+  }
+}

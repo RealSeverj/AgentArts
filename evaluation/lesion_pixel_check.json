@@ -1,0 +1,91 @@
+{
+  "dataset": "IDRiD original segmentation testing split",
+  "image_count": 27,
+  "weights_sha256": "a7a7cb45b92328f7c9a8e581eec3944fd435d37fae8cbf340b1319c5f987c6d2",
+  "label_mapping": {
+    "MA": "Microaneurysms",
+    "HE": "Hemorrhages",
+    "EX": "Hard exudates",
+    "SE": "Cotton wool spots"
+  },
+  "device": "CPU",
+  "model_inputs": "original color pixels only, no annotations for inference",
+  "threshold": "softmax then pixel argmax after resize, no threshold tuned with this split",
+  "limitations": "Author declares training data from IDRiD among five sources. This checks alignment and replication on the original dataset test split, not an independent external or clinical validation. Only available reference masks contribute.",
+  "sample_ids": [
+    "IDRiD:segmentation:test:IDRiD_55",
+    "IDRiD:segmentation:test:IDRiD_56",
+    "IDRiD:segmentation:test:IDRiD_57",
+    "IDRiD:segmentation:test:IDRiD_58",
+    "IDRiD:segmentation:test:IDRiD_59",
+    "IDRiD:segmentation:test:IDRiD_60",
+    "IDRiD:segmentation:test:IDRiD_61",
+    "IDRiD:segmentation:test:IDRiD_62",
+    "IDRiD:segmentation:test:IDRiD_63",
+    "IDRiD:segmentation:test:IDRiD_64",
+    "IDRiD:segmentation:test:IDRiD_65",
+    "IDRiD:segmentation:test:IDRiD_66",
+    "IDRiD:segmentation:test:IDRiD_67",
+    "IDRiD:segmentation:test:IDRiD_68",
+    "IDRiD:segmentation:test:IDRiD_69",
+    "IDRiD:segmentation:test:IDRiD_70",
+    "IDRiD:segmentation:test:IDRiD_71",
+    "IDRiD:segmentation:test:IDRiD_72",
+    "IDRiD:segmentation:test:IDRiD_73",
+    "IDRiD:segmentation:test:IDRiD_74",
+    "IDRiD:segmentation:test:IDRiD_75",
+    "IDRiD:segmentation:test:IDRiD_76",
+    "IDRiD:segmentation:test:IDRiD_77",
+    "IDRiD:segmentation:test:IDRiD_78",
+    "IDRiD:segmentation:test:IDRiD_79",
+    "IDRiD:segmentation:test:IDRiD_80",
+    "IDRiD:segmentation:test:IDRiD_81"
+  ],
+  "metrics": {
+    "MA": {
+      "n_masks": 27,
+      "unavailable_annotations": 0,
+      "predicted": 317173,
+      "reference": 323896,
+      "intersection": 129121,
+      "mean_image_dice": 0.37984,
+      "pixel_dice": 0.40283,
+      "pixel_precision": 0.4071,
+      "pixel_recall": 0.39865
+    },
+    "HE": {
+      "n_masks": 27,
+      "unavailable_annotations": 0,
+      "predicted": 3283369,
+      "reference": 3516519,
+      "intersection": 2241164,
+      "mean_image_dice": 0.54403,
+      "pixel_dice": 0.65918,
+      "pixel_precision": 0.68258,
+      "pixel_recall": 0.63732
+    },
+    "EX": {
+      "n_masks": 27,
+      "unavailable_annotations": 0,
+      "predicted": 3632592,
+      "reference": 3577920,
+      "intersection": 2744031,
+      "mean_image_dice": 0.63623,
+      "pixel_dice": 0.76112,
+      "pixel_precision": 0.75539,
+      "pixel_recall": 0.76693
+    },
+    "SE": {
+      "n_masks": 14,
+      "unavailable_annotations": 13,
+      "predicted": 498523,
+      "reference": 595892,
+      "intersection": 389822,
+      "mean_image_dice": 0.48732,
+      "pixel_dice": 0.71238,
+      "pixel_precision": 0.78195,
+      "pixel_recall": 0.65418
+    }
+  },
+  "duration_seconds": 69.5
+}

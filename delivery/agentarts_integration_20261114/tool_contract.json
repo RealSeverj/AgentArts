@@ -1,0 +1,239 @@
+{
+  "contract_version": "draft-20261114.1",
+  "document_kind": "proposed_tool_contract_not_a_deployed_service",
+  "deployment": {
+    "production_endpoint": null,
+    "transport": null,
+    "authentication_configured": false,
+    "credential_reference": null,
+    "backend_available": false,
+    "online_inference_verified": false,
+    "note": "No endpoint or credentials are supplied by this draft. Do not interpret saved weights, UI draft configuration, or the unavailable example as a successful tool call."
+  },
+  "tool_definition": {
+    "name": "screen_fundus",
+    "description": "Call the real versioned four-expert fundus screening backend and return evidence plus stage execution status. With no connected backend, return tool_unavailable; never synthesize model outputs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "image_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Accessible HTTPS fundus image resource. The backend validates/decodes it; the agent must not replace it with invented content."
+        }
+      },
+      "required": ["image_url"],
+      "additionalProperties": false
+    }
+  },
+  "shared_input_contract": {
+    "decode": "Decode source image once to RGB, then apply each expert's own saved deterministic preprocessing independently.",
+    "normalization_mean_rgb": [0.485, 0.456, 0.406],
+    "normalization_std_rgb": [0.229, 0.224, 0.225],
+    "inference_augmentation": false,
+    "image_fetch_validation": "The backend must validate permitted resource locations, redirect destinations, file size/type and decoded dimensions; the language model does not fetch arbitrary internal resources.",
+    "log_policy": "Use request/image fingerprints for traceability; do not expose credentials, local paths or signed URL secrets in user-facing output."
+  },
+  "model_registry": {
+    "quality": {
+      "model_id": "quality_eyeq_vitb14_392_best11_20261114",
+      "task": "image_quality",
+      "current_training_source": "EyeQ",
+      "supervised_source_history": ["EyeQ"],
+      "architecture": "vit_base_patch14_dinov2.lvd142m",
+      "weights_sha256": "fa5ee22b483b09c8dec9050455b5e6010d51c2ecced17d0a55982657bdd66f8f",
+      "best_completed_epoch": 11,
+      "input_size_hw": [392, 392],
+      "preprocessing": {"mode": "stretch", "resize": "PIL_BILINEAR"},
+      "activation": "softmax",
+      "class_order": ["Good", "Usable", "Reject"],
+      "classification_rule": "argmax",
+      "calibration_state": "not_validated_for_production"
+    },
+    "multidisease": {
+      "model_id": "multidisease_rfmid_vitb14_392_best21_20261114",
+      "task": "multidisease",
+      "current_training_source": "RFMiD",
+      "supervised_source_history": ["RFMiD"],
+      "architecture": "vit_base_patch14_dinov2.lvd142m",
+      "weights_sha256": "f5352ccb0834b41a2d9e6ed6d43c80b7b7b2e87dcfa1c0b3690f96eddafca640",
+      "best_completed_epoch": 21,
+      "input_size_hw": [392, 392],
+      "preprocessing": {"mode": "stretch", "resize": "PIL_BILINEAR"},
+      "activation": "independent_sigmoids",
+      "label_order": ["DR", "AMD", "MYOPIC_FUNDUS", "OPTIC_DISC_CUPPING", "ABNORMAL"],
+      "historical_evaluation_thresholds": [0.5, 0.5, 0.5, 0.5, 0.5],
+      "calibration_state": "not_validated_for_production",
+      "semantics": {
+        "OPTIC_DISC_CUPPING": "Optic-disc cupping phenotype; not a glaucoma diagnosis.",
+        "ABNORMAL": "Independent abnormality label; do not derive by OR/max of the other four outputs.",
+        "scores": "Five independent model scores; they do not sum to one and are not validated individual disease probabilities."
+      }
+    },
+    "dr_grading": {
+      "model_id": "dr_ddr_vitl14_crop336_best24_20261114",
+      "task": "dr_grading",
+      "current_training_source": "DDR",
+      "supervised_source_history": ["APTOS2019", "DDR"],
+      "initialization_note": "Weights-only initialization from the APTOS head-only epoch5 checkpoint, followed by DDR training; not a raw pretrained zero-shot classifier.",
+      "architecture": "vit_large_patch14_dinov2.lvd142m",
+      "weights_sha256": "a85acf367a34361986739e93030bc5c51a390ddd33c63d49da883abf1562d4ab",
+      "best_completed_epoch": 24,
+      "input_size_hw": [336, 336],
+      "preprocessing": {
+        "mode": "fundus_crop_letterbox_v1",
+        "black_threshold": 8,
+        "analysis_size": 512,
+        "crop_margin": 0.02,
+        "min_component_fraction": 0.01,
+        "min_axis_fraction": 0.25,
+        "padding_color": [0, 0, 0],
+        "resize": "Aspect-preserving PIL_BILINEAR with centered black padding; use the shared saved implementation, not a hand-written approximate crop."
+      },
+      "activation": "softmax",
+      "grade_order": [0, 1, 2, 3, 4],
+      "classification_rule": "argmax",
+      "calibration_state": "not_validated_for_production"
+    },
+    "disc_cup_segmentation": {
+      "model_id": "disc_cup_refuge_unet32_512_best33_20261114",
+      "task": "disc_cup_segmentation",
+      "current_training_source": "REFUGE",
+      "source_provenance": "Previously audited mixed incomplete REFUGE/REFUGE2 public mirror and unchanged source-isolated manifests; not asserted to be a pure official REFUGE release.",
+      "supervised_source_history": ["REFUGE"],
+      "architecture": "unet",
+      "base_channels": 32,
+      "initialization": "random",
+      "weights_sha256": "bb25840047eedca5b115c3a81c9f7b8e3e73a8a0729cc6c67b9f55b1c38ef5e7",
+      "best_completed_epoch": 33,
+      "input_size_hw": [512, 512],
+      "preprocessing": {"mode": "stretch", "image_resize": "PIL_BILINEAR", "reference_mask_resize": "PIL_NEAREST"},
+      "activation": "independent_sigmoid_masks",
+      "channel_order": ["optic_cup", "optic_disc"],
+      "historical_mask_threshold": 0.5,
+      "output_space": "whole_image_resized_to_model_img_size",
+      "containment_enforced_by_model": false,
+      "semantics": "Segmentation is not a glaucoma classifier; measurements require real mask computation and explicit coordinate space."
+    }
+  },
+  "routing_policy": {
+    "production_policy_id": null,
+    "production_policy_configured": false,
+    "validation_passed": false,
+    "planned_order": ["quality", "multidisease", "conditional_dr_grading", "conditional_disc_cup_segmentation"],
+    "quality_reject_behavior": "Stop downstream inference; mark remaining stages not_run with reason quality_rejected and output null. Return quality_rejected, advise image retake/manual review, never a negative disease result.",
+    "quality_usable_behavior": "Retain the quality warning; do not relabel Usable as Good.",
+    "candidate_gates_not_validated": {
+      "dr_grading": {"source_score": "multidisease.DR", "operator": ">=", "candidate_threshold": 0.3},
+      "disc_cup_segmentation": {"source_score": "multidisease.OPTIC_DISC_CUPPING", "operator": ">=", "candidate_threshold": 0.3}
+    },
+    "actual_thresholds": null,
+    "note": "Candidate 0.3 gates must not be presented as validated/calibrated production thresholds. Historical classifier evaluation at 0.5 does not measure gate recall at 0.3. Do not silently activate candidate gates; runtime must return the explicit configured policy and its validation state."
+  },
+  "response_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "contract_version": {"const": "draft-20261114.1"},
+      "request_id": {"type": ["string", "null"]},
+      "status": {"enum": ["ok", "partial", "quality_rejected", "tool_unavailable", "input_error", "error"]},
+      "message": {"type": "string"},
+      "image_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+      "created_utc": {"type": ["string", "null"], "format": "date-time"},
+      "routing": {"type": ["object", "null"], "description": "Actual policy ID, validation state, actual thresholds and per-stage trigger reasons; null if not executed/unconfigured."},
+      "results": {
+        "type": "object",
+        "properties": {
+          "quality": {"$ref": "#/$defs/stage"},
+          "multidisease": {"$ref": "#/$defs/stage"},
+          "dr_grading": {"$ref": "#/$defs/stage"},
+          "disc_cup_segmentation": {"$ref": "#/$defs/stage"}
+        },
+        "required": ["quality", "multidisease", "dr_grading", "disc_cup_segmentation"],
+        "additionalProperties": false
+      },
+      "warnings": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["contract_version", "request_id", "status", "message", "image_sha256", "created_utc", "routing", "results", "warnings"],
+    "additionalProperties": false,
+    "$defs": {
+      "stage": {
+        "type": "object",
+        "properties": {
+          "status": {"enum": ["completed", "not_run", "error"]},
+          "reason": {"type": ["string", "null"]},
+          "model_id": {"type": ["string", "null"]},
+          "weights_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "preprocessing_version": {"type": ["string", "null"]},
+          "elapsed_ms": {"type": ["number", "null"], "minimum": 0},
+          "output": {"type": ["object", "null"]}
+        },
+        "required": ["status", "reason", "model_id", "weights_sha256", "preprocessing_version", "elapsed_ms", "output"],
+        "additionalProperties": false,
+        "allOf": [
+          {"if": {"properties": {"status": {"const": "not_run"}}}, "then": {"properties": {"output": {"type": "null"}, "elapsed_ms": {"type": "null"}}}},
+          {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"model_id": {"type": "string", "minLength": 1}, "weights_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "preprocessing_version": {"type": "string", "minLength": 1}, "elapsed_ms": {"type": "number", "minimum": 0}, "output": {"type": "object"}}}}
+        ]
+      }
+    }
+  },
+  "completed_output_contracts": {
+    "quality": {
+      "class_order": ["Good", "Usable", "Reject"],
+      "scores": "Object with exactly Good/Usable/Reject finite numeric keys in [0,1]; sum approximately 1.",
+      "predicted_label": "One of Good/Usable/Reject, consistent with argmax.",
+      "calibration_state": "Explicit unvalidated or actual versioned validation calibration reference."
+    },
+    "multidisease": {
+      "label_order": ["DR", "AMD", "MYOPIC_FUNDUS", "OPTIC_DISC_CUPPING", "ABNORMAL"],
+      "scores": "Object with exactly the five finite sigmoid scores in [0,1]. Do not normalize their sum.",
+      "decision_thresholds": "Actual per-label thresholds returned by the backend, or null if no binary decision policy is configured.",
+      "binary_decisions": "Backend-computed per-label booleans from an actual configured decision policy, or null; the language model must not invent or silently recompute decisions.",
+      "calibration_state": "Explicit unvalidated or actual versioned validation calibration reference."
+    },
+    "dr_grading": {
+      "grade_order": [0, 1, 2, 3, 4],
+      "scores": "Five finite softmax scores in fixed grade order, each in [0,1], sum approximately 1.",
+      "predicted_grade": "Integer 0..4 from argmax; only present for a completed real DR inference.",
+      "calibration_state": "Explicit unvalidated or actual versioned validation calibration reference."
+    },
+    "disc_cup_segmentation": {
+      "channel_order": ["optic_cup", "optic_disc"],
+      "mask_artifacts": "Actual backend-created cup/disc mask references and optional overlay; null references cannot be replaced by invented URLs.",
+      "mask_threshold": "Actual threshold, initially historical 0.5; any change requires a separately versioned validation policy.",
+      "coordinate_space": "whole_image_resized_to_model_img_size at [512,512], plus actual mapping to source coordinates if an original-space overlay is supplied.",
+      "cup_outside_disc_pixels": "Nonnegative integer computed on the actual binary masks.",
+      "containment_correction_applied": "Explicit boolean; preserve uncorrected result and label any independently validated postprocessing.",
+      "derived_measurements": "Only measurements actually computed by backend with definitions and coordinate space; otherwise null. No inferred glaucoma diagnosis."
+    }
+  },
+  "semantic_invariants": [
+    "Completed outputs must also meet their corresponding completed_output_contracts, exact model registry and runtime provenance; generic response JSON validation alone is insufficient.",
+    "tool_unavailable means all stages are not_run, reason tool_unavailable, all outputs null, no fabricated execution times, scores or model-loaded claims.",
+    "quality_rejected requires a real completed quality result predicted Reject; downstream stages are not_run, output null, reason quality_rejected.",
+    "A stage skipped by policy remains not_run with output null and an actual route reason; skipped does not mean negative, normal, or DR grade0.",
+    "Per-stage errors are explicit and cannot be changed into low-risk/negative outputs; completed evidence can be retained with overall partial status.",
+    "Neither score thresholds nor probability calibration may be fitted using the test set or silently changed by the agent.",
+    "Raw softmax/sigmoid confidence is not a validated individual diagnosis probability.",
+    "Do not treat missing cross-source labels as negatives or merge training sources/tasks during integration.",
+    "Never fill per-image results with aggregate cohort evaluation statistics."
+  ],
+  "unavailable_response_example": {
+    "contract_version": "draft-20261114.1",
+    "request_id": null,
+    "status": "tool_unavailable",
+    "message": "当前推理服务尚未连接，未完成图像筛查。",
+    "image_sha256": null,
+    "created_utc": null,
+    "routing": null,
+    "results": {
+      "quality": {"status": "not_run", "reason": "tool_unavailable", "model_id": null, "weights_sha256": null, "preprocessing_version": null, "elapsed_ms": null, "output": null},
+      "multidisease": {"status": "not_run", "reason": "tool_unavailable", "model_id": null, "weights_sha256": null, "preprocessing_version": null, "elapsed_ms": null, "output": null},
+      "dr_grading": {"status": "not_run", "reason": "tool_unavailable", "model_id": null, "weights_sha256": null, "preprocessing_version": null, "elapsed_ms": null, "output": null},
+      "disc_cup_segmentation": {"status": "not_run", "reason": "tool_unavailable", "model_id": null, "weights_sha256": null, "preprocessing_version": null, "elapsed_ms": null, "output": null}
+    },
+    "warnings": ["未执行任何模型，不能据此判断图像正常、疾病阴性或DR等级。"]
+  },
+  "example_semantics": "The unavailable example contains no simulated model predictions. No successful inference example is provided until an actual backend call exists."
+}

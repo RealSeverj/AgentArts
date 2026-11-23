@@ -1,0 +1,58 @@
+{
+  "seed": 20261113,
+  "task": "disc_cup_segmentation",
+  "kind": "segmentation",
+  "labels": [
+    "optic_cup",
+    "optic_disc"
+  ],
+  "data": {
+    "protocol": "strict_cross_domain",
+    "expert": "expert_1"
+  },
+  "model": {
+    "name": "unet",
+    "pretrained": false,
+    "img_size": 512,
+    "base_channels": 32,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "augmentation": {
+    "horizontal_flip": 0.5,
+    "vertical_flip": 0.0,
+    "patch_size": null
+  },
+  "loss": {
+    "bce_weight": 1.0,
+    "dice_weight": 1.0
+  },
+  "evaluation": {
+    "threshold": 0.5
+  },
+  "training": {
+    "epochs": 50,
+    "batch_size": 2,
+    "grad_accum_steps": 4,
+    "workers": 4,
+    "amp": "fp16",
+    "lr": 0.0003,
+    "weight_decay": 0.05,
+    "warmup_epochs": 2,
+    "clip_grad_norm": 1.0,
+    "freeze_backbone_epochs": 0,
+    "full_finetune_epoch": 0,
+    "best_metric": "macro_dice",
+    "best_mode": "max",
+    "log_every": 25
+  },
+  "notes": "Train on selected derived binary masks. Validation/test use whole image resized to 512; metrics are NOT native-resolution sliding-window results."
+}
