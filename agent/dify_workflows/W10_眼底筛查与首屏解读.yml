@@ -426,10 +426,6 @@ workflow:
           value_selector:
           - llm_retake
           - text
-        - variable: screening_json
-          value_selector:
-          - http_screen
-          - body
     viewport:
       x: 0
       y: 0

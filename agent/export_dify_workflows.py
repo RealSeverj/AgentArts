@@ -456,7 +456,6 @@ def build_w10_screen(origin: str, api_key: str) -> dict:
             {
                 "outputs": [
                     {"variable": "answer", "value_selector": ["llm_retake", "text"]},
-                    {"variable": "screening_json", "value_selector": ["http_screen", "body"]},
                 ]
             },
         ),

@@ -76,7 +76,11 @@ class DifyWorkflowDslTests(unittest.TestCase):
         self.assertEqual(visited, len(node_map), f"Cycle detected in {path.name}")
 
         # Verify HTTP node settings & JSON body template validity
+        end_selectors: list[tuple[str, ...]] = []
         for node in nodes:
+            if node["data"]["type"] == "end":
+                for out in node["data"].get("outputs", []):
+                    end_selectors.append(tuple(out["value_selector"]))
             if node["data"]["type"] == "http-request":
                 data = node["data"]
                 self.assertTrue(data["url"].startswith(DEFAULT_ORIGIN))
@@ -86,6 +90,8 @@ class DifyWorkflowDslTests(unittest.TestCase):
                     self.assertEqual(data["body"]["type"], "json")
                     body_text = data["body"]["data"][0]["value"]
                     json.loads(body_text)
+        # AgentArts merges multiple end nodes and names inputs from value_selector; duplicates cause import errors.
+        self.assertEqual(len(end_selectors), len(set(end_selectors)), f"Duplicate end value_selector in {path.name}")
 
     def test_repo_sanitized_dify_workflows_present_and_valid(self):
         self.assertTrue(REPO_DIFY_DIR.is_dir())
