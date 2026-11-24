@@ -31,10 +31,12 @@ class DifyWorkflowDslTests(unittest.TestCase):
 
         doc = yaml.safe_load(raw)
         self.assertEqual(doc["kind"], "app")
-        self.assertEqual(doc["version"], "0.1.5")
+        self.assertEqual(doc["version"], "0.6.0")
+        self.assertEqual(doc["dependencies"], [])
         self.assertEqual(doc["app"]["mode"], "workflow")
 
         graph = doc["workflow"]["graph"]
+        self.assertEqual(graph["viewport"], {"x": 0, "y": 0, "zoom": 1})
         nodes = graph["nodes"]
         edges = graph["edges"]
         self.assertLessEqual(len(nodes), 150)

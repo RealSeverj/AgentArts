@@ -49,8 +49,9 @@ def _base_app(name: str, description: str, icon: str) -> dict:
             "name": name,
             "use_icon_as_answer_icon": False,
         },
+        "dependencies": [],
         "kind": "app",
-        "version": "0.1.5",
+        "version": "0.6.0",
     }
 
 
@@ -64,16 +65,35 @@ def _features() -> dict:
         "retriever_resource": {"enabled": True},
         "sensitive_word_avoidance": {"enabled": False},
         "speech_to_text": {"enabled": False},
+        "suggested_questions": [],
+        "suggested_questions_after_answer": {"enabled": False},
         "text_to_speech": {"enabled": False},
     }
 
 
+def _workflow_block(nodes: list[dict], edges: list[dict]) -> dict:
+    return {
+        "conversation_variables": [],
+        "environment_variables": [],
+        "features": _features(),
+        "graph": {
+            "edges": edges,
+            "nodes": nodes,
+            "viewport": {"x": 0, "y": 0, "zoom": 1},
+        },
+    }
+
+
 def _node(node_id: str, node_type: str, title: str, x: int, y: int, data: dict, desc: str = "") -> dict:
-    payload = {"type": node_type, "title": title, "desc": desc, **data}
+    payload = {"type": node_type, "title": title, "desc": desc, "selected": False, **data}
     return {
         "id": node_id,
         "type": "custom",
+        "width": 244,
+        "height": 98,
+        "selected": False,
         "position": {"x": x, "y": y},
+        "positionAbsolute": {"x": x, "y": y},
         "data": payload,
     }
 
@@ -86,6 +106,7 @@ def _edge(source: str, source_type: str, target: str, target_type: str, source_h
         "target": target,
         "targetHandle": "target",
         "type": "custom",
+        "zIndex": 0,
         "data": {
             "isInIteration": False,
             "sourceType": source_type,
@@ -151,6 +172,11 @@ def _http_node(
                 "max_connect_timeout": 10,
                 "max_read_timeout": read_timeout,
                 "max_write_timeout": 30,
+            },
+            "retry_config": {
+                "max_retries": 1,
+                "retry_enabled": False,
+                "retry_interval": 100,
             },
             "ssl_verify": True,
         },
@@ -286,12 +312,7 @@ def build_w00_context(origin: str, api_key: str) -> dict:
         _edge("http_context", "http-request", "llm_triage_entry", "llm"),
         _edge("llm_triage_entry", "llm", "end", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 
@@ -355,12 +376,14 @@ def build_w10_screen(origin: str, api_key: str) -> dict:
                         "conditions": [
                             {
                                 "id": "cond_status_200",
+                                "varType": "number",
                                 "variable_selector": ["http_screen", "status_code"],
-                                "comparison_operator": "is",
+                                "comparison_operator": "=",
                                 "value": "200",
                             },
                             {
                                 "id": "cond_not_rejected",
+                                "varType": "string",
                                 "variable_selector": ["http_screen", "body"],
                                 "comparison_operator": "not contains",
                                 "value": "\"quality_rejected\"",
@@ -447,12 +470,7 @@ def build_w10_screen(origin: str, api_key: str) -> dict:
         _edge("if_qc_ok", "if-else", "llm_retake", "llm", source_handle="false"),
         _edge("llm_retake", "llm", "end_reject", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 
@@ -493,6 +511,7 @@ def build_w20_qa_and_edu(origin: str, api_key: str) -> dict:
                         "conditions": [
                             {
                                 "id": "cond_asmt_not_empty",
+                                "varType": "string",
                                 "variable_selector": ["start", "assessment_id"],
                                 "comparison_operator": "not empty",
                                 "value": "",
@@ -581,12 +600,7 @@ def build_w20_qa_and_edu(origin: str, api_key: str) -> dict:
         _edge("kb_no_img", "knowledge-retrieval", "llm_answer_no_img", "llm"),
         _edge("llm_answer_no_img", "llm", "end_no_image", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 
@@ -701,12 +715,7 @@ def build_w30_care_plan(origin: str, api_key: str) -> dict:
         _edge("kb_care", "knowledge-retrieval", "llm_care_plan", "llm"),
         _edge("llm_care_plan", "llm", "end", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 
@@ -755,12 +764,14 @@ def build_w40_compare(origin: str, api_key: str) -> dict:
                         "conditions": [
                             {
                                 "id": "cond_prev",
+                                "varType": "string",
                                 "variable_selector": ["start", "previous_assessment_id"],
                                 "comparison_operator": "not empty",
                                 "value": "",
                             },
                             {
                                 "id": "cond_curr",
+                                "varType": "string",
                                 "variable_selector": ["start", "current_assessment_id"],
                                 "comparison_operator": "not empty",
                                 "value": "",
@@ -855,12 +866,7 @@ def build_w40_compare(origin: str, api_key: str) -> dict:
         _edge("http_ctx", "http-request", "llm_list_eyes", "llm"),
         _edge("llm_list_eyes", "llm", "end_ctx", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 
@@ -908,12 +914,7 @@ def build_w90_fallback(origin: str, _api_key: str) -> dict:
         _edge("start", "start", "llm_fallback", "llm"),
         _edge("llm_fallback", "llm", "end", "end"),
     ]
-    doc["workflow"] = {
-        "conversation_variables": [],
-        "environment_variables": [],
-        "features": _features(),
-        "graph": {"nodes": nodes, "edges": edges},
-    }
+    doc["workflow"] = _workflow_block(nodes, edges)
     return doc
 
 

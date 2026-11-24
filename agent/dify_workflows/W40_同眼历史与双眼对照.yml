@@ -6,8 +6,9 @@ app:
   mode: workflow
   name: W40_同眼历史与双眼对照
   use_icon_as_answer_icon: false
+dependencies: []
 kind: app
-version: 0.1.5
+version: 0.6.0
 workflow:
   conversation_variables: []
   environment_variables: []
@@ -27,19 +28,107 @@ workflow:
       enabled: false
     speech_to_text:
       enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
     text_to_speech:
       enabled: false
   graph:
+    edges:
+    - id: start__source__to__if_two_ids
+      source: start
+      sourceHandle: source
+      target: if_two_ids
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: if-else
+    - id: if_two_ids__true__to__http_compare
+      source: if_two_ids
+      sourceHandle: 'true'
+      target: http_compare
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+    - id: http_compare__source__to__llm_compare
+      source: http_compare
+      sourceHandle: source
+      target: llm_compare
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_compare__source__to__end_cmp
+      source: llm_compare
+      sourceHandle: source
+      target: end_cmp
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    - id: if_two_ids__false__to__http_ctx
+      source: if_two_ids
+      sourceHandle: 'false'
+      target: http_ctx
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+    - id: http_ctx__source__to__llm_list_eyes
+      source: http_ctx
+      sourceHandle: source
+      target: llm_list_eyes
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_list_eyes__source__to__end_ctx
+      source: llm_list_eyes
+      sourceHandle: source
+      target: end_ctx
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
     nodes:
     - id: start
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 80
+        y: 260
+      positionAbsolute:
         x: 80
         y: 260
       data:
         type: start
         title: 开始
         desc: ''
+        selected: false
         variables:
         - variable: user_query
           label: 用户的对比或双眼查看诉求
@@ -67,25 +156,34 @@ workflow:
           options: []
     - id: if_two_ids
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 360
+        y: 260
+      positionAbsolute:
         x: 360
         y: 260
       data:
         type: if-else
         title: 判断是否已指定两条对比ID
         desc: ''
+        selected: false
         cases:
         - case_id: 'true'
           id: 'true'
           logical_operator: and
           conditions:
           - id: cond_prev
+            varType: string
             variable_selector:
             - start
             - previous_assessment_id
             comparison_operator: not empty
             value: ''
           - id: cond_curr
+            varType: string
             variable_selector:
             - start
             - current_assessment_id
@@ -93,13 +191,20 @@ workflow:
             value: ''
     - id: http_compare
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 660
+        y: 140
+      positionAbsolute:
         x: 660
         y: 140
       data:
         type: http-request
         title: 调用同眼对比接口
         desc: ''
+        selected: false
         method: post
         url: https://severj.top/v1/comparisons
         authorization:
@@ -121,16 +226,27 @@ workflow:
           max_connect_timeout: 10
           max_read_timeout: 15
           max_write_timeout: 30
+        retry_config:
+          max_retries: 1
+          retry_enabled: false
+          retry_interval: 100
         ssl_verify: true
     - id: llm_compare
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 960
+        y: 140
+      positionAbsolute:
         x: 960
         y: 140
       data:
         type: llm
         title: A4 输出可比性与差异解读
         desc: ''
+        selected: false
         model:
           provider: deepseek
           name: deepseek-chat
@@ -166,13 +282,20 @@ workflow:
         selected_variables: []
     - id: http_ctx
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 660
+        y: 390
+      positionAbsolute:
         x: 660
         y: 390
       data:
         type: http-request
         title: 拉取近期检查与双眼列表
         desc: ''
+        selected: false
         method: get
         url: https://severj.top/v1/context?session_id={{#start.session_id#}}
         authorization:
@@ -187,16 +310,27 @@ workflow:
           max_connect_timeout: 10
           max_read_timeout: 15
           max_write_timeout: 30
+        retry_config:
+          max_retries: 1
+          retry_enabled: false
+          retry_interval: 100
         ssl_verify: true
     - id: llm_list_eyes
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 960
+        y: 390
+      positionAbsolute:
         x: 960
         y: 390
       data:
         type: llm
         title: 整理左/右眼汇总并引导选择
         desc: ''
+        selected: false
         model:
           provider: deepseek
           name: deepseek-chat
@@ -230,13 +364,20 @@ workflow:
         selected_variables: []
     - id: end_cmp
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 1260
+        y: 140
+      positionAbsolute:
         x: 1260
         y: 140
       data:
         type: end
         title: 结束（对比报告）
         desc: ''
+        selected: false
         outputs:
         - variable: answer
           value_selector:
@@ -248,86 +389,26 @@ workflow:
           - body
     - id: end_ctx
       type: custom
+      width: 244
+      height: 98
+      selected: false
       position:
+        x: 1260
+        y: 390
+      positionAbsolute:
         x: 1260
         y: 390
       data:
         type: end
         title: 结束（检查汇总）
         desc: ''
+        selected: false
         outputs:
         - variable: answer
           value_selector:
           - llm_list_eyes
           - text
-    edges:
-    - id: start__source__to__if_two_ids
-      source: start
-      sourceHandle: source
-      target: if_two_ids
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: start
-        targetType: if-else
-    - id: if_two_ids__true__to__http_compare
-      source: if_two_ids
-      sourceHandle: 'true'
-      target: http_compare
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: http-request
-    - id: http_compare__source__to__llm_compare
-      source: http_compare
-      sourceHandle: source
-      target: llm_compare
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: http-request
-        targetType: llm
-    - id: llm_compare__source__to__end_cmp
-      source: llm_compare
-      sourceHandle: source
-      target: end_cmp
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: llm
-        targetType: end
-    - id: if_two_ids__false__to__http_ctx
-      source: if_two_ids
-      sourceHandle: 'false'
-      target: http_ctx
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: http-request
-    - id: http_ctx__source__to__llm_list_eyes
-      source: http_ctx
-      sourceHandle: source
-      target: llm_list_eyes
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: http-request
-        targetType: llm
-    - id: llm_list_eyes__source__to__end_ctx
-      source: llm_list_eyes
-      sourceHandle: source
-      target: end_ctx
-      targetHandle: target
-      type: custom
-      data:
-        isInIteration: false
-        sourceType: llm
-        targetType: end
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
