@@ -23,6 +23,7 @@ class Settings:
     docs_enabled: bool = False
     visual_origin: str | None = None
     workflow_db: Path | None = None
+    hospital_root: Path | None = None
     routing: dict = field(default_factory=lambda: {
         "mode": "all", "policy_id": "development-all-v1", "validation_passed": False,
     })
@@ -47,11 +48,11 @@ class Settings:
     def from_env(cls):
         config_path = Path(os.getenv("RETINA_SERVICE_CONFIG", ROOT / "configs/inference/service.json")).resolve()
         config = json.loads(config_path.read_text(encoding="utf-8-sig"))
-        allowed = {"registry", "weights_root", "research_root", "workflow_db", "device", "precision", "cpu_threads",
+        allowed = {"registry", "weights_root", "research_root", "workflow_db", "hospital_root", "device", "precision", "cpu_threads",
                    "max_concurrent_requests", "max_body_bytes", "docs_enabled", "visual_origin", "routing", "image_policy"}
         if not isinstance(config, dict) or set(config) - allowed:
             raise ValueError("Unknown service configuration fields")
-        for key in ("registry", "weights_root", "research_root", "workflow_db"):
+        for key in ("registry", "weights_root", "research_root", "workflow_db", "hospital_root"):
             candidate = os.getenv("RETINA_" + key.upper(), config.get(key))
             if candidate is not None:
                 path = Path(candidate).expanduser()

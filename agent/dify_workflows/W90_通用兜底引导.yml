@@ -1,9 +1,9 @@
 app:
-  description: 多智能体默认工作流：处理非眼科闲聊、普通自拍/眼表/OCT 图像范围说明，并提供正确使用指引与集成工作台入口。
+  description: 多智能体默认兜底工作流：处理超出眼底健康范围的问题，并提示门户与拍片室演示入口。
   icon: W9
   icon_background: '#EFF6FF'
   mode: workflow
-  name: W90_边界与异常兜底
+  name: W90_通用兜底引导
   use_icon_as_answer_icon: false
 dependencies: []
 kind: app
@@ -74,11 +74,11 @@ workflow:
         desc: ''
         selected: false
         variables:
-        - variable: user_query
+        - variable: query
           label: 用户输入
           type: paragraph
           required: true
-          max_length: 2000
+          max_length: 4000
           options: []
     - id: llm_fallback
       type: custom
@@ -93,7 +93,7 @@ workflow:
         y: 240
       data:
         type: llm
-        title: 边界说明与操作引导
+        title: 礼貌边界与引导说明
         desc: ''
         selected: false
         model:
@@ -101,23 +101,17 @@ workflow:
           name: deepseek-chat
           mode: chat
           completion_params:
-            temperature: 0.2
+            temperature: 0.25
         prompt_template:
         - id: llm_fallback_sys
           role: system
-          text: '你是眼底筛查与随访多智能体系统的默认兜底助手（W90）。绝对禁止使用任何 Emoji。
+          text: '你是「视健康」眼科智能体系统的默认兜底助手。严禁使用任何 Emoji。
 
-            当用户提问超出眼底筛查范围、上传了普通自拍/眼表外照/OCT 图像，或遇到任务异常时：
-
-            1. 礼貌说明本系统适用范围：基于彩色眼底相机照片的六模型辅助筛查、四类病灶定位、症状优先随访与大众科普；
-
-            2. 如用户描述了突发飞蚊、闪光感、幕帘遮挡、突发视力骤降或剧烈眼痛，无论场景必须优先提醒立即线下眼科急诊；
-
-            3. 引导用户可上传清晰的眼底彩色照（附带左/右眼说明），或前往在线可视化演示工作台体验： https://severj.top/v1/demo
-            。'
+            当用户输入与眼科检查/日常护眼/患者会诊无关时，礼貌说明自己的服务范围（医院眼底报告解读、症状分诊、眼科科普与医生辅助会诊），若提及突发黑影、闪光感、遮挡或剧痛等症状仍立即提醒去眼科急诊；并可告知医患门户体验地址：https://severj.top/v1/demo
+            ，拍片室同步模拟地址：https://severj.top/v1/imaging_room 。'
         - id: llm_fallback_usr
           role: user
-          text: 用户输入：{{#start.user_query#}}
+          text: 用户输入：{{#start.query#}}
         context:
           enabled: false
           variable_selector: []

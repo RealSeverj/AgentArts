@@ -1,0 +1,251 @@
+app:
+  description: 患者突发不适或症状咨询：自动调取该患者慢病史与最近眼底记录，结合急症红线与知识库给出贴合本人病情的分诊建议。
+  icon: P2
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: P20_结合病史症状问诊
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - id: start__source__to__http_api
+      source: start
+      sourceHandle: source
+      target: http_api
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+    - id: http_api__source__to__kb_search
+      source: http_api
+      sourceHandle: source
+      target: kb_search
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: knowledge-retrieval
+    - id: kb_search__source__to__llm_reply
+      source: kb_search
+      sourceHandle: source
+      target: llm_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+    - id: llm_reply__source__to__end
+      source: llm_reply
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    nodes:
+    - id: start
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 80
+        y: 240
+      positionAbsolute:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        selected: false
+        variables:
+        - variable: query
+          label: 用户输入
+          type: paragraph
+          required: true
+          max_length: 4000
+          options: []
+    - id: http_api
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 360
+        y: 240
+      positionAbsolute:
+        x: 360
+        y: 240
+      data:
+        type: http-request
+        title: 拉取患者病史与急症判定
+        desc: ''
+        selected: false
+        method: post
+        url: https://severj.top/v1/his/agent/patient/symptom
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_api_json_body
+            key: ''
+            type: text
+            value: '{"query": "{{#start.query#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        retry_config:
+          max_retries: 1
+          retry_enabled: false
+          retry_interval: 100
+        ssl_verify: true
+    - id: kb_search
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 660
+        y: 240
+      positionAbsolute:
+        x: 660
+        y: 240
+      data:
+        type: knowledge-retrieval
+        title: 检索医学与科普知识库
+        desc: ''
+        selected: false
+        query_variable_selector:
+        - start
+        - query
+        dataset_ids:
+        - REPLACE_WITH_AGENTARTS_KB_ID
+        retrieval_mode: multiple
+        multiple_retrieval_config:
+          top_k: 5
+          score_threshold: 0.35
+          reranking_enable: false
+    - id: llm_reply
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 960
+        y: 240
+      positionAbsolute:
+        x: 960
+        y: 240
+      data:
+        type: llm
+        title: 个体化症状解答
+        desc: ''
+        selected: false
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.25
+        prompt_template:
+        - id: llm_reply_sys
+          role: system
+          text: '你是「视健康·患者端个人眼健康管家」。严禁使用任何 Emoji。
+
+            结合后端返回的该患者个人慢病史、既往眼底情况、急症检测标志（urgent_detected）以及知识库检索内容，贴心地回答患者不适：
+
+            1. 先复述并关切患者的症状感受，把医学可能性用大白话讲明白；
+
+            2. 务必主动把【他本人的既往慢病史和眼底底子】联系起来分析（例如原本就有几年糖尿病、之前左眼查过糖网等）；
+
+            3. 如果 urgent_detected=true，务必第一时间清晰温和地劝导患者别耽误、今天停下剧烈活动尽快让家人陪着去眼科急诊或做散瞳检查；
+
+            4. 若暂未命中急症，安抚情绪并告知哪些情况出现时需及时看医生。'
+        - id: llm_reply_usr
+          role: user
+          text: '患者描述症状：{{#start.query#}}
+
+            个人画像与急症判定：{{#http_api.body#}}
+
+            知识库检索参考：{{#kb_search.result#}}'
+        context:
+          enabled: true
+          variable_selector:
+          - kb_search
+          - result
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 1260
+        y: 240
+      positionAbsolute:
+        x: 1260
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        selected: false
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_reply
+          - text
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

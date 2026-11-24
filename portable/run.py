@@ -21,6 +21,7 @@ def service_settings(device):
     return Settings(registry=ROOT / "portable/models.json", weights_root=ROOT,
                     research_root=ROOT,
                     workflow_db=ROOT / "inference_runtime/clinical_workflow.sqlite3",
+                    hospital_root=ROOT / "inference_runtime/hospital_storage",
                     device=device, precision="auto",
                     cpu_threads=min(8, os.cpu_count() or 1))
 

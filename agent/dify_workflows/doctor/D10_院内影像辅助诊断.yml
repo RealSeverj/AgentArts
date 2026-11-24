@@ -1,9 +1,9 @@
 app:
-  description: 多智能体起始工作流：每轮必先加载当前会话绑定检查与近期列表，识别受众身份，并抢先扫描眼科急症警示症状。
-  icon: W0
+  description: 医生端核心阅片工作流：自动抓取患者左/右眼最新院内影像执行六模型与四类病灶定位推理，结合医学指南库输出临床风险提示与医生版 PDF 报告。
+  icon: D1
   icon_background: '#EFF6FF'
   mode: workflow
-  name: W00_上下文与急症前置检查
+  name: D10_院内影像辅助诊断
   use_icon_as_answer_icon: false
 dependencies: []
 kind: app
@@ -34,10 +34,10 @@ workflow:
       enabled: false
   graph:
     edges:
-    - id: start__source__to__http_context
+    - id: start__source__to__http_api
       source: start
       sourceHandle: source
-      target: http_context
+      target: http_api
       targetHandle: target
       type: custom
       zIndex: 0
@@ -45,19 +45,30 @@ workflow:
         isInIteration: false
         sourceType: start
         targetType: http-request
-    - id: http_context__source__to__llm_triage_entry
-      source: http_context
+    - id: http_api__source__to__kb_search
+      source: http_api
       sourceHandle: source
-      target: llm_triage_entry
+      target: kb_search
       targetHandle: target
       type: custom
       zIndex: 0
       data:
         isInIteration: false
         sourceType: http-request
+        targetType: knowledge-retrieval
+    - id: kb_search__source__to__llm_reply
+      source: kb_search
+      sourceHandle: source
+      target: llm_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
         targetType: llm
-    - id: llm_triage_entry__source__to__end
-      source: llm_triage_entry
+    - id: llm_reply__source__to__end
+      source: llm_reply
       sourceHandle: source
       target: end
       targetHandle: target
@@ -86,18 +97,12 @@ workflow:
         selected: false
         variables:
         - variable: query
-          label: 用户本轮输入
+          label: 用户输入
           type: paragraph
           required: true
-          max_length: 2000
+          max_length: 4000
           options: []
-        - variable: session_id
-          label: 会话ID（默认 default）
-          type: text-input
-          required: false
-          max_length: 128
-          options: []
-    - id: http_context
+    - id: http_api
       type: custom
       width: 244
       height: 98
@@ -110,29 +115,35 @@ workflow:
         y: 240
       data:
         type: http-request
-        title: 获取当前检查上下文
+        title: 执行六模型与病灶定位推理
         desc: ''
         selected: false
-        method: get
-        url: https://severj.top/v1/context?session_id={{#start.session_id#}}
+        method: post
+        url: https://severj.top/v1/his/agent/doctor/diagnose
         authorization:
           type: no-auth
           config: null
-        headers: 'X-API-Key: YOUR_RETINA_API_KEY'
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
         params: ''
         body:
-          type: none
-          data: []
+          type: json
+          data:
+          - id: http_api_json_body
+            key: ''
+            type: text
+            value: '{"query": "{{#start.query#}}"}'
         timeout:
           max_connect_timeout: 10
-          max_read_timeout: 15
+          max_read_timeout: 120
           max_write_timeout: 30
         retry_config:
           max_retries: 1
           retry_enabled: false
           retry_interval: 100
         ssl_verify: true
-    - id: llm_triage_entry
+    - id: kb_search
       type: custom
       width: 244
       height: 98
@@ -144,8 +155,34 @@ workflow:
         x: 660
         y: 240
       data:
+        type: knowledge-retrieval
+        title: 检索医学与科普知识库
+        desc: ''
+        selected: false
+        query_variable_selector:
+        - start
+        - query
+        dataset_ids:
+        - REPLACE_WITH_AGENTARTS_KB_ID
+        retrieval_mode: multiple
+        multiple_retrieval_config:
+          top_k: 5
+          score_threshold: 0.35
+          reranking_enable: false
+    - id: llm_reply
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 960
+        y: 240
+      positionAbsolute:
+        x: 960
+        y: 240
+      data:
         type: llm
-        title: 入口状态与急症受众识别
+        title: 临床专业辅助诊断报告
         desc: ''
         selected: false
         model:
@@ -153,32 +190,31 @@ workflow:
           name: deepseek-chat
           mode: chat
           completion_params:
-            temperature: 0.2
+            temperature: 0.25
         prompt_template:
-        - id: llm_triage_entry_sys
+        - id: llm_reply_sys
           role: system
-          text: '你是眼底筛查多智能体应用的起始路由预处理助手。禁止使用任何 Emoji。
+          text: '你是「视健康·眼科医生端临床辅助智能体」。严禁使用任何 Emoji。
 
-            根据用户输入和后端返回的上下文 JSON，提炼如下结构化摘要供下游子工作流引用：
+            请严格忠于后端六模型推理与临床规则接口返回的结果及医学知识库指南：
 
-            1. active_assessment_id 与 eye（若无记录则明确写无）；
+            1. 简洁专业汇报：当前会诊患者、分析眼别、DR 分级（0~4级）、达到研究筛查线的异常标签、四类病灶定位关注区（MA/HE/EX/SE）及同眼纵向趋势；
 
-            2. urgent_flag：若用户文本含突发大量飞蚊/黑影飘动、闪光感、黑幕样视野遮挡、突发视力骤降或剧烈眼痛伴头痛恶心（且非否定表述），标记为
-            URGENT；否则 NORMAL；
+            2. 明确给出专科进一步重点核查方向（如黄斑 OCT、眼压、视野、FFA 等）及知识库指南来源依据；
 
-            3. audience：识别为 patient（受检者/大众体检）、caregiver（陪诊家属/替父母子女咨询）或 clinician（基层医生）；
-
-            4. 若 urgent_flag=URGENT，在输出第一行醒目提醒立即前往眼科急诊。'
-        - id: llm_triage_entry_usr
+            3. 务必保留并输出接口返回的临床版报告链接（doctor_report_url），方便医生点击查看双图并导出标准 A4 PDF。'
+        - id: llm_reply_usr
           role: user
-          text: '用户输入：{{#start.query#}}
+          text: '医生指令：{{#start.query#}}
 
-            后端上下文返回状态码：{{#http_context.status_code#}}
+            辅助推理与规则返回：{{#http_api.body#}}
 
-            后端上下文内容：{{#http_context.body#}}'
+            医学指南参考片段：{{#kb_search.result#}}'
         context:
-          enabled: false
-          variable_selector: []
+          enabled: true
+          variable_selector:
+          - kb_search
+          - result
         vision:
           enabled: false
         memory:
@@ -192,10 +228,10 @@ workflow:
       height: 98
       selected: false
       position:
-        x: 960
+        x: 1260
         y: 240
       positionAbsolute:
-        x: 960
+        x: 1260
         y: 240
       data:
         type: end
@@ -203,14 +239,10 @@ workflow:
         desc: ''
         selected: false
         outputs:
-        - variable: triage_summary
+        - variable: answer
           value_selector:
-          - llm_triage_entry
+          - llm_reply
           - text
-        - variable: context_json
-          value_selector:
-          - http_context
-          - body
     viewport:
       x: 0
       y: 0

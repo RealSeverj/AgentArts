@@ -23,6 +23,13 @@ from inference.clinical_workflow import (
     CompareRequest,
     IntakeRequest,
 )
+from inference.hospital_system import (
+    AgentQueryRequest,
+    HospitalImageUploadRequest,
+    HospitalSystemStore,
+    PatientUpsertRequest,
+    PortalChatRequest,
+)
 from inference.image_io import InputImageError, URLFetchPolicy, fetch_and_decode_image
 from inference.schemas import FundusResponse, ScreenRequest, failure_response
 from inference.settings import Settings
@@ -92,6 +99,7 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
         from inference.visual_delivery import VisualDelivery
         delivery = VisualDelivery(origin)
     workflow = ClinicalWorkflowStore(settings.workflow_db)
+    hospital = HospitalSystemStore(settings.hospital_root, public_origin=origin)
 
     async def expire_views():
         while True:
@@ -131,6 +139,7 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                 cleaner.cancel()
                 await asyncio.gather(cleaner, return_exceptions=True)
             workflow.close()
+            hospital.close()
             app.state.engine = None
 
     app = FastAPI(title="Retinal screening inference", version="0.1.0", lifespan=lifespan,
@@ -165,10 +174,28 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
         return Response(payload, media_type=MEDIA[name], headers=headers)
 
     @app.get("/v1/demo", include_in_schema=False)
+    @app.get("/v1/portal", include_in_schema=False)
     def demo_workbench_page():
-        from inference.demo_workbench import render_demo_workbench_html
+        from inference.portal_pages import render_dual_portal_html
 
-        html_doc = render_demo_workbench_html(ready=ready())
+        html_doc = render_dual_portal_html(ready=ready())
+        headers = {
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+            "Content-Security-Policy": (
+                "default-src 'self'; img-src 'self' data: blob:; "
+                "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+                "connect-src 'self'; base-uri 'none'; form-action 'self'"
+            ),
+        }
+        return Response(html_doc.encode("utf-8"), media_type="text/html; charset=utf-8", headers=headers)
+
+    @app.get("/v1/imaging_room", include_in_schema=False)
+    def imaging_room_page():
+        from inference.portal_pages import render_imaging_room_html
+
+        html_doc = render_imaging_room_html(ready=ready())
         headers = {
             "Referrer-Policy": "no-referrer",
             "X-Content-Type-Options": "nosniff",
@@ -387,5 +414,133 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                               "error": {"code": "assessment_not_found", "message": "至少有一条评估记录不存在，无法进行对比。"},
                               "request_id": rid}, 404)
         return safe_json({"ok": True, "data": result, "error": None, "request_id": rid}, 200)
+
+    # --- Hospital imaging sync, dual-audience persistent reports & single-query AgentArts routes ---
+
+    @app.get("/v1/his/patients", include_in_schema=False)
+    def his_list_patients():
+        return safe_json({"ok": True, "patients": hospital.list_patients_brief()}, 200)
+
+    @app.get("/v1/his/patients/{phone}", include_in_schema=False)
+    def his_get_patient(phone: str):
+        overview = hospital.get_patient_overview(phone)
+        if overview is None:
+            return safe_json({"ok": False, "message": "未找到该手机号对应的患者档案。"}, 404)
+        return safe_json({"ok": True, **overview}, 200)
+
+    @app.post("/v1/his/patients", include_in_schema=False)
+    def his_upsert_patient(body: PatientUpsertRequest):
+        overview = hospital.upsert_patient(body)
+        return safe_json({"ok": True, **overview}, 200)
+
+    @app.post("/v1/his/images/upload", include_in_schema=False)
+    def his_upload_image(body: HospitalImageUploadRequest):
+        try:
+            res = hospital.upload_hospital_image(body)
+            return safe_json(res, 200)
+        except (ValueError, InputImageError) as err:
+            return safe_json({"ok": False, "message": str(err)}, 422)
+
+    @app.get("/v1/his/reports/{report_id}/{name}", include_in_schema=False)
+    def his_view_report(report_id: str, name: str):
+        if name == "patient.html":
+            doc = hospital.render_patient_report_html(report_id)
+            if doc is None:
+                return Response(status_code=404)
+            return Response(doc.encode("utf-8"), media_type="text/html; charset=utf-8",
+                            headers={"X-Content-Type-Options": "nosniff"})
+        if name == "doctor.html":
+            doc = hospital.render_doctor_report_html(report_id)
+            if doc is None:
+                return Response(status_code=404)
+            return Response(doc.encode("utf-8"), media_type="text/html; charset=utf-8",
+                            headers={"X-Content-Type-Options": "nosniff"})
+        if name in {"original.jpg", "overlay.jpg"}:
+            blob = hospital.read_report_media(report_id, name)
+            if blob is None:
+                return Response(status_code=404)
+            return Response(blob, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"})
+        return Response(status_code=404)
+
+    @app.post("/v1/his/portal/chat", include_in_schema=False)
+    def his_portal_chat(body: PortalChatRequest):
+        from inference.portal_pages import handle_portal_chat
+
+        if not gate.acquire(blocking=False):
+            return safe_json({"ok": False, "reply": "推理服务正忙，请稍候片刻再试。"}, 429)
+        try:
+            return safe_json(handle_portal_chat(hospital, body, app.state.engine), 200)
+        except RuntimeError as err:
+            return safe_json({"ok": False, "reply": str(err)}, 503)
+        finally:
+            gate.release()
+
+    @app.post("/v1/his/agent/patient/session", tags=["hospital_agent"])
+    def his_agent_patient_session(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_patient_session_query
+
+        return safe_json(handle_patient_session_query(hospital, body.query), 200)
+
+    @app.post("/v1/his/agent/patient/report", tags=["hospital_agent"])
+    def his_agent_patient_report(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_patient_report_query
+
+        if not gate.acquire(blocking=False):
+            return safe_json({"ok": False, "reply": "当前推理队列正忙，请稍候几秒再试。"}, 429)
+        try:
+            return safe_json(handle_patient_report_query(hospital, body.query, app.state.engine), 200)
+        except RuntimeError as err:
+            return safe_json({"ok": False, "reply": str(err)}, 503)
+        finally:
+            gate.release()
+
+    @app.post("/v1/his/agent/patient/symptom", tags=["hospital_agent"])
+    def his_agent_patient_symptom(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_patient_symptom_query
+
+        return safe_json(handle_patient_symptom_query(hospital, body.query), 200)
+
+    @app.post("/v1/his/agent/doctor/patient", tags=["hospital_agent"])
+    def his_agent_doctor_patient(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_doctor_patient_query
+
+        return safe_json(handle_doctor_patient_query(hospital, body.query), 200)
+
+    @app.post("/v1/his/agent/doctor/diagnose", tags=["hospital_agent"])
+    def his_agent_doctor_diagnose(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_doctor_diagnose_query
+
+        if not gate.acquire(blocking=False):
+            return safe_json({"ok": False, "reply": "当前推理队列正忙，请稍候再试。"}, 429)
+        try:
+            return safe_json(handle_doctor_diagnose_query(hospital, body.query, app.state.engine), 200)
+        except RuntimeError as err:
+            return safe_json({"ok": False, "reply": str(err)}, 503)
+        finally:
+            gate.release()
+
+    @app.post("/v1/his/agent/doctor/records", tags=["hospital_agent"])
+    def his_agent_doctor_records(body: AgentQueryRequest, request: Request, key: str | None = Security(KEY_HEADER)):
+        rid = request_id(request)
+        if not authorized(key):
+            return safe_json(failure_response("error", "接口认证失败。", rid, reason="unauthorized"), 401)
+        from inference.portal_pages import handle_doctor_records_query
+
+        return safe_json(handle_doctor_records_query(hospital, body.query), 200)
 
     return app

@@ -1,0 +1,212 @@
+app:
+  description: 患者免传图查报告：自动检查医院拍片室是否同步了新片、执行六模型分析与跨期对比，并用通俗温暖的话语解读报告并附报告链接。
+  icon: P1
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: P10_患者报告温暖解读
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - id: start__source__to__http_api
+      source: start
+      sourceHandle: source
+      target: http_api
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+    - id: http_api__source__to__llm_reply
+      source: http_api
+      sourceHandle: source
+      target: llm_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_reply__source__to__end
+      source: llm_reply
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    nodes:
+    - id: start
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 80
+        y: 240
+      positionAbsolute:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        selected: false
+        variables:
+        - variable: query
+          label: 用户输入
+          type: paragraph
+          required: true
+          max_length: 4000
+          options: []
+    - id: http_api
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 360
+        y: 240
+      positionAbsolute:
+        x: 360
+        y: 240
+      data:
+        type: http-request
+        title: 院内影像自动分析与对比
+        desc: ''
+        selected: false
+        method: post
+        url: https://severj.top/v1/his/agent/patient/report
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_api_json_body
+            key: ''
+            type: text
+            value: '{"query": "{{#start.query#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 120
+          max_write_timeout: 30
+        retry_config:
+          max_retries: 1
+          retry_enabled: false
+          retry_interval: 100
+        ssl_verify: true
+    - id: llm_reply
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 660
+        y: 240
+      positionAbsolute:
+        x: 660
+        y: 240
+      data:
+        type: llm
+        title: 温暖版报告翻译润色
+        desc: ''
+        selected: false
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.25
+        prompt_template:
+        - id: llm_reply_sys
+          role: system
+          text: '你是「视健康·患者端个人眼健康管家」。严禁使用任何 Emoji。
+
+            后端接口已经替您完成了院内影像排查、六模型推理、与上次同眼报告的进步对比，并生成了患者专属报告链接。
+
+            请绝对以接口返回JSON中的事实、patient_report_url 和 reply 建议为基础，用通俗、亲切、让人放心的口语整理回复：
+
+            1. 绝对不要生硬堆砌“图像质控 Good”“0~100 标度”“微动脉瘤候选区”“[SRC_*]”等科研术语；
+
+            2. 先说明是查了医院新同步的照片还是调出了上一次存档报告；
+
+            3. 若未见明显病变，用类似“很高兴告诉您：模型检查后没有发现明显的视网膜病变，您可以放宽心”表达；若有进步对比，说明“整体往好的方向走（具体恢复情况门诊让医生最终拍板）”；若有需要留意的问题，温和建议复查时间；
+
+            4. 务必保留并展示接口返回的 patient_report_url 链接，告诉患者点开即可查看及保存 PDF 报告。'
+        - id: llm_reply_usr
+          role: user
+          text: '患者本轮说：{{#start.query#}}
+
+            院内报告接口返回：{{#http_api.body#}}'
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 960
+        y: 240
+      positionAbsolute:
+        x: 960
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        selected: false
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_reply
+          - text
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

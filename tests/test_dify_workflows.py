@@ -1,4 +1,4 @@
-"""Validate exported Dify Workflow DSL (.yml) files for AgentArts import compatibility."""
+"""Validate exported dual-app Dify 0.6.0 Workflow DSL (.yml) packages for AgentArts."""
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -43,11 +43,16 @@ class DifyWorkflowDslTests(unittest.TestCase):
 
         node_map = {n["id"]: n for n in nodes}
         self.assertEqual(len(node_map), len(nodes), f"Duplicate node ids in {path.name}")
-        types = {n["data"]["type"] for n in nodes}
-        self.assertIn("start", types)
-        self.assertIn("end", types)
+        start_nodes = [n for n in nodes if n["data"]["type"] == "start"]
+        end_nodes = [n for n in nodes if n["data"]["type"] == "end"]
+        self.assertEqual(len(start_nodes), 1)
+        self.assertGreaterEqual(len(end_nodes), 1)
 
-        # Verify DAG (no cycles) and edge handle integrity
+        # Single mandatory 'query' parameter avoids multi-slot extraction failures in AgentArts controller.
+        start_vars = start_nodes[0]["data"]["variables"]
+        self.assertEqual([v["variable"] for v in start_vars], ["query"])
+        self.assertTrue(start_vars[0]["required"])
+
         indegree = {nid: 0 for nid in node_map}
         adj: dict[str, list[str]] = defaultdict(list)
         for edge in edges:
@@ -55,12 +60,8 @@ class DifyWorkflowDslTests(unittest.TestCase):
             self.assertIn(src, node_map)
             self.assertIn(dst, node_map)
             self.assertEqual(edge["type"], "custom")
-            src_node = node_map[src]
-            self.assertEqual(edge["data"]["sourceType"], src_node["data"]["type"])
+            self.assertEqual(edge["data"]["sourceType"], node_map[src]["data"]["type"])
             self.assertEqual(edge["data"]["targetType"], node_map[dst]["data"]["type"])
-            if src_node["data"]["type"] == "if-else":
-                valid_handles = {c["case_id"] for c in src_node["data"]["cases"]} | {"false"}
-                self.assertIn(edge["sourceHandle"], valid_handles)
             adj[src].append(dst)
             indegree[dst] += 1
 
@@ -75,7 +76,6 @@ class DifyWorkflowDslTests(unittest.TestCase):
                     queue.append(nxt)
         self.assertEqual(visited, len(node_map), f"Cycle detected in {path.name}")
 
-        # Verify HTTP node settings & JSON body template validity
         end_selectors: list[tuple[str, ...]] = []
         for node in nodes:
             if node["data"]["type"] == "end":
@@ -85,20 +85,18 @@ class DifyWorkflowDslTests(unittest.TestCase):
                 data = node["data"]
                 self.assertTrue(data["url"].startswith(DEFAULT_ORIGIN))
                 self.assertIn(f"X-API-Key: {expected_api_key}", data["headers"])
-                if data["method"] == "post":
-                    self.assertIn("Content-Type: application/json", data["headers"])
-                    self.assertEqual(data["body"]["type"], "json")
-                    body_text = data["body"]["data"][0]["value"]
-                    json.loads(body_text)
-        # AgentArts merges multiple end nodes and names inputs from value_selector; duplicates cause import errors.
+                self.assertIn("Content-Type: application/json", data["headers"])
+                self.assertEqual(data["body"]["type"], "json")
+                body_text = data["body"]["data"][0]["value"]
+                self.assertEqual(json.loads(body_text), {"query": "{{#start.query#}}"})
         self.assertEqual(len(end_selectors), len(set(end_selectors)), f"Duplicate end value_selector in {path.name}")
 
-    def test_repo_sanitized_dify_workflows_present_and_valid(self):
+    def test_repo_sanitized_dual_app_dify_workflows_valid(self):
         self.assertTrue(REPO_DIFY_DIR.is_dir())
-        files = sorted(p.name for p in REPO_DIFY_DIR.glob("*.yml"))
+        files = sorted(p.relative_to(REPO_DIFY_DIR).as_posix() for p in REPO_DIFY_DIR.rglob("*.yml"))
         self.assertEqual(files, sorted(WORKFLOW_BUILDERS))
-        for filename in files:
-            self._assert_valid_dsl(REPO_DIFY_DIR / filename, expected_api_key=PLACEHOLDER_API_KEY)
+        for rel in files:
+            self._assert_valid_dsl(REPO_DIFY_DIR / rel, expected_api_key=PLACEHOLDER_API_KEY)
 
     def test_export_with_custom_api_key_and_origin(self):
         custom_key = "custom-test-key-123456"
@@ -107,10 +105,10 @@ class DifyWorkflowDslTests(unittest.TestCase):
             out_dir = Path(tmp) / "bundle"
             paths = export_dify_workflows(out_dir, origin=custom_origin, api_key=custom_key)
             self.assertEqual(len(paths), len(WORKFLOW_BUILDERS))
-            w10 = (out_dir / "W10_眼底筛查与首屏解读.yml").read_text(encoding="utf-8")
-            self.assertIn(f"{custom_origin}/v1/screen_fundus", w10)
-            self.assertIn(f"X-API-Key: {custom_key}", w10)
-            self.assertNotIn(PLACEHOLDER_API_KEY, w10)
+            p10 = (out_dir / "patient" / "P10_患者报告温暖解读.yml").read_text(encoding="utf-8")
+            self.assertIn(f"{custom_origin}/v1/his/agent/patient/report", p10)
+            self.assertIn(f"X-API-Key: {custom_key}", p10)
+            self.assertNotIn(PLACEHOLDER_API_KEY, p10)
 
 
 if __name__ == "__main__":

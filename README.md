@@ -18,9 +18,10 @@ C:\Users\Severj\anaconda3\envs\py310\python.exe portable/run.py serve --public-o
 C:\Users\Severj\anaconda3\envs\py310\python.exe -m unittest discover -s tests
 ```
 
-- **集成可视化演示工作台（Web Demo）**：`http://127.0.0.1:8000/v1/demo`（公网映射：`https://severj.top/v1/demo`）
+- **医患双端在线演示门户**：`http://127.0.0.1:8000/v1/demo`（公网映射：`https://severj.top/v1/demo`）
+- **医院拍片室影像同步模拟系统**：`http://127.0.0.1:8000/v1/imaging_room`（公网映射：`https://severj.top/v1/imaging_room`）
 - **健康与就绪检查**：`GET /healthz`、`GET /readyz`
-- **华为云 AgentArts 导入产物**：运行 `agent/prepare_agent.py` 生成的 `agent/agent_ready_severj/agent_fundus.jsonl` 与 `retina_tools.openapi.json`
+- **华为云 AgentArts 导入产物**：`agent/agent_ready_severj/dify_workflows/`（患者端 `patient/*.yml` + 医生端 `doctor/*.yml` 单 `query` 入参 Dify `0.6.0` 工作流包）及 `agent_fundus.jsonl`
 
 ## 目录说明
 

@@ -1,0 +1,195 @@
+app:
+  description: 患者日常闲聊或主动询问青光眼、糖网、飞蚊症、豹纹状眼底等眼病科普知识与护眼视频/文章推荐。
+  icon: P3
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: P30_眼健康日常科普答疑
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - id: start__source__to__kb_edu
+      source: start
+      sourceHandle: source
+      target: kb_edu
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: knowledge-retrieval
+    - id: kb_edu__source__to__llm_edu
+      source: kb_edu
+      sourceHandle: source
+      target: llm_edu
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+    - id: llm_edu__source__to__end
+      source: llm_edu
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    nodes:
+    - id: start
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 80
+        y: 240
+      positionAbsolute:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        selected: false
+        variables:
+        - variable: query
+          label: 用户输入
+          type: paragraph
+          required: true
+          max_length: 4000
+          options: []
+    - id: kb_edu
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 360
+        y: 240
+      positionAbsolute:
+        x: 360
+        y: 240
+      data:
+        type: knowledge-retrieval
+        title: 检索患者通俗科普库
+        desc: ''
+        selected: false
+        query_variable_selector:
+        - start
+        - query
+        dataset_ids:
+        - REPLACE_WITH_AGENTARTS_KB_ID
+        retrieval_mode: multiple
+        multiple_retrieval_config:
+          top_k: 5
+          score_threshold: 0.35
+          reranking_enable: false
+    - id: llm_edu
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 680
+        y: 240
+      positionAbsolute:
+        x: 680
+        y: 240
+      data:
+        type: llm
+        title: 亲切科普讲解与资源推荐
+        desc: ''
+        selected: false
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.25
+        prompt_template:
+        - id: llm_edu_sys
+          role: system
+          text: '你是「视健康·患者端个人眼健康管家」。严禁使用任何 Emoji。
+
+            患者在闲暇或体检后向你咨询常见眼病知识（如青光眼是怎么发生的、平时注意什么、玻璃膜疣/豹纹眼底是什么意思等）：
+
+            1. 用生活化的比喻把病因讲清楚（例如把青光眼比作水球水压排不畅），绝不吓唬患者；
+
+            2. 列出 3~5 条在家就能照着做到的日常护眼小贴士；
+
+            3. 附带推荐权威科普文章主题与视频检索建议（后续若在画布串联市场视频 MCP 插件，可直接附真实视频链接）。'
+        - id: llm_edu_usr
+          role: user
+          text: '患者提问：{{#start.query#}}
+
+            科普知识库片段：{{#kb_edu.result#}}'
+        context:
+          enabled: true
+          variable_selector:
+          - kb_edu
+          - result
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      width: 244
+      height: 98
+      selected: false
+      position:
+        x: 980
+        y: 240
+      positionAbsolute:
+        x: 980
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        selected: false
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_edu
+          - text
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

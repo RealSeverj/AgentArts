@@ -9,6 +9,7 @@ output/
 agent/agent_ready*/
 inference_runtime/*.dpapi
 inference_runtime/*.sqlite3*
+inference_runtime/hospital_storage/
 inference_runtime/local_gpu/server_process.json
 inference_runtime/local_gpu/server.*.log
 inference_runtime/local_gpu/tunnel-state.json
