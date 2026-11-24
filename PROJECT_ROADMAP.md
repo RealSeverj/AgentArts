@@ -142,7 +142,7 @@
 
 - `inference/`：FastAPI 服务、六模型引擎、四类病灶分割、SQLite 临床工作流、动态 A4 PDF 报告与集成 Web 演示工作台（`/v1/demo`）。
 - `portable/`：一键启动入口 (`portable/run.py`) 与便携模型注册表 (`portable/models.json`)。
-- `agent/`：华为云 AgentArts OpenAPI 契约、`prepare_agent.py` 构建器、`A0~A4` 多智能体提示词与配置包 (`agent/agent_ready_severj/`)。
+- `agent/`：华为云 AgentArts OpenAPI 契约、`prepare_agent.py` 构建器、`export_dify_workflows.py`、`dify_workflows/`（6 套标准化 Dify Workflow DSL）与 `A0~A4` 多智能体提示词。
 - `knowledge_base/`：导入华为云知识库的 4 份结构化医学与科普文档。
 - `configs/`、`02_模型训练与评估/`、`cloud_upload/`、`training/`、`scripts/`（仅保留 6 个核心运行时与基础设施文件）：模型推理与校验锁依赖。
 - `tests/`：核心推理、临床工作流、API、病灶分割与可视化报告自动化测试集。

@@ -1,0 +1,359 @@
+app:
+  description: 接收眼底照片 HTTPS 地址及随图眼别症状，原子调用六模型与病灶定位，经质控分支后结合医学知识库输出首屏解读与 PDF 链接。
+  icon: W1
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: W10_眼底筛查与首屏解读
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 80
+        y: 260
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        variables:
+        - variable: image_url
+          label: 眼底图像 HTTPS 地址
+          type: text-input
+          required: true
+          max_length: 4096
+          options: []
+        - variable: eye
+          label: 眼别（left / right / unknown）
+          type: text-input
+          required: false
+          max_length: 32
+          options: []
+        - variable: symptoms
+          label: 随图眼部症状（逗号分隔）
+          type: text-input
+          required: false
+          max_length: 512
+          options: []
+        - variable: history
+          label: 随图慢病与治疗史（逗号分隔）
+          type: text-input
+          required: false
+          max_length: 512
+          options: []
+        - variable: audience
+          label: 受众视角（patient / caregiver / clinician）
+          type: text-input
+          required: false
+          max_length: 32
+          options: []
+        - variable: user_query
+          label: 用户附带提问
+          type: paragraph
+          required: false
+          max_length: 1000
+          options: []
+    - id: http_screen
+      type: custom
+      position:
+        x: 360
+        y: 260
+      data:
+        type: http-request
+        title: 六模型与病灶定位推理
+        desc: ''
+        method: post
+        url: https://severj.top/v1/screen_fundus
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_screen_json_body
+            key: ''
+            type: text
+            value: '{"image_url": "{{#start.image_url#}}", "eye": "{{#start.eye#}}",
+              "symptoms": "{{#start.symptoms#}}", "history": "{{#start.history#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 120
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: if_qc_ok
+      type: custom
+      position:
+        x: 660
+        y: 260
+      data:
+        type: if-else
+        title: 校验请求与图像质控
+        desc: ''
+        cases:
+        - case_id: 'true'
+          id: 'true'
+          logical_operator: and
+          conditions:
+          - id: cond_status_200
+            variable_selector:
+            - http_screen
+            - status_code
+            comparison_operator: is
+            value: '200'
+          - id: cond_not_rejected
+            variable_selector:
+            - http_screen
+            - body
+            comparison_operator: not contains
+            value: '"quality_rejected"'
+    - id: kb_medical
+      type: custom
+      position:
+        x: 960
+        y: 140
+      data:
+        type: knowledge-retrieval
+        title: 检索医学知识库
+        desc: ''
+        query_variable_selector:
+        - start
+        - user_query
+        dataset_ids:
+        - REPLACE_WITH_AGENTARTS_KB_ID
+        retrieval_mode: multiple
+        multiple_retrieval_config:
+          top_k: 5
+          score_threshold: 0.35
+          reranking_enable: false
+    - id: llm_explain
+      type: custom
+      position:
+        x: 1260
+        y: 140
+      data:
+        type: llm
+        title: A2 医学解读与首屏输出
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_explain_sys
+          role: system
+          text: '你是眼底医学解读智能体（A2）。绝对禁止使用任何 Emoji 表情符号。
+
+            必须严格依据筛查接口返回的 JSON 数据与检索到的医学知识库内容作答：
+
+            1. 先明确图像质控状态（Good/Usable）及六模型运行情况，严禁修改分数、阈值或糖网分期数字；
+
+            2. 严格区分疾病（DR/AMD/RVO/CSR/glaucoma）、影像体征（DN/ODC/ODE/ODP/MYOPIC_FUNDUS/TSLN）与治疗痕迹（LS
+            激光瘢痕，绝不写成新发眼病）；
+
+            3. 根据受众模式（patient 通俗去焦虑 / caregiver 陪诊与红线 / clinician 全量指标明细）组织回复，并在专业概念后标注来源编号（如
+            [SRC_DR_GUIDELINE_2024]、[SRC_DICT_LS]）；
+
+            4. 使用 Markdown 三级标题与对齐表格展示核心发现；保留展示 visual_report.original_url 与 overlay_url；
+
+            5. 若返回存在 visual_report.report_url，必须在回复末尾以引用块给出：[打开完整交互报告（支持导出标准 A4 PDF）](report_url)。'
+        - id: llm_explain_usr
+          role: user
+          text: '受众模式：{{#start.audience#}}
+
+            眼别：{{#start.eye#}}；症状：{{#start.symptoms#}}；病史：{{#start.history#}}
+
+            用户问题：{{#start.user_query#}}
+
+            筛查接口返回JSON：{{#http_screen.body#}}
+
+            医学知识库检索片段：{{#kb_medical.result#}}'
+        context:
+          enabled: true
+          variable_selector:
+          - kb_medical
+          - result
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: llm_retake
+      type: custom
+      position:
+        x: 960
+        y: 390
+      data:
+        type: llm
+        title: 质控拦截与重拍引导
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_retake_sys
+          role: system
+          text: '你是眼底筛查质控引导助手。禁止使用任何 Emoji。
+
+            当图像质控为 Reject、图像不可读或请求报错时：
+
+            1. 清晰告知无法进行自动分期或筛查的具体原因（参考返回 JSON 中的 message 与 reason）；
+
+            2. 绝不能把未运行的模型项写成“正常”或“阴性”；
+
+            3. 给出重拍清晰眼底照片的具体动作建议（暗室对焦、避免反光遮挡），若用户已自述紧急视力症状，同时提醒立即眼科面诊 [SRC_QC_RETAKE]。'
+        - id: llm_retake_usr
+          role: user
+          text: 'HTTP 状态码：{{#http_screen.status_code#}}
+
+            返回内容：{{#http_screen.body#}}'
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end_ok
+      type: custom
+      position:
+        x: 1560
+        y: 140
+      data:
+        type: end
+        title: 输出解读结果
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_explain
+          - text
+        - variable: screening_json
+          value_selector:
+          - http_screen
+          - body
+    - id: end_reject
+      type: custom
+      position:
+        x: 1260
+        y: 390
+      data:
+        type: end
+        title: 输出质控指引
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_retake
+          - text
+        - variable: screening_json
+          value_selector:
+          - http_screen
+          - body
+    edges:
+    - id: start__source__to__http_screen
+      source: start
+      sourceHandle: source
+      target: http_screen
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+    - id: http_screen__source__to__if_qc_ok
+      source: http_screen
+      sourceHandle: source
+      target: if_qc_ok
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: if-else
+    - id: if_qc_ok__true__to__kb_medical
+      source: if_qc_ok
+      sourceHandle: 'true'
+      target: kb_medical
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+    - id: kb_medical__source__to__llm_explain
+      source: kb_medical
+      sourceHandle: source
+      target: llm_explain
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+    - id: llm_explain__source__to__end_ok
+      source: llm_explain
+      sourceHandle: source
+      target: end_ok
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    - id: if_qc_ok__false__to__llm_retake
+      source: if_qc_ok
+      sourceHandle: 'false'
+      target: llm_retake
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: llm
+    - id: llm_retake__source__to__end_reject
+      source: llm_retake
+      sourceHandle: source
+      target: end_reject
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end

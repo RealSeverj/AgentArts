@@ -1,0 +1,333 @@
+app:
+  description: 在明确两次检查 ID 时调用 compare_assessments 执行同眼与版本可比性核验；缺 ID 或查询双眼对照时读取 get_context
+    汇总展示。
+  icon: W4
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: W40_同眼历史与双眼对照
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 80
+        y: 260
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        variables:
+        - variable: user_query
+          label: 用户的对比或双眼查看诉求
+          type: paragraph
+          required: true
+          max_length: 1000
+          options: []
+        - variable: previous_assessment_id
+          label: 较早检查 assessment_id（可选）
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+        - variable: current_assessment_id
+          label: 较新检查 assessment_id（可选）
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+        - variable: session_id
+          label: 会话ID（默认 default）
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+    - id: if_two_ids
+      type: custom
+      position:
+        x: 360
+        y: 260
+      data:
+        type: if-else
+        title: 判断是否已指定两条对比ID
+        desc: ''
+        cases:
+        - case_id: 'true'
+          id: 'true'
+          logical_operator: and
+          conditions:
+          - id: cond_prev
+            variable_selector:
+            - start
+            - previous_assessment_id
+            comparison_operator: not empty
+            value: ''
+          - id: cond_curr
+            variable_selector:
+            - start
+            - current_assessment_id
+            comparison_operator: not empty
+            value: ''
+    - id: http_compare
+      type: custom
+      position:
+        x: 660
+        y: 140
+      data:
+        type: http-request
+        title: 调用同眼对比接口
+        desc: ''
+        method: post
+        url: https://severj.top/v1/comparisons
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_compare_json_body
+            key: ''
+            type: text
+            value: '{"previous_assessment_id": "{{#start.previous_assessment_id#}}",
+              "current_assessment_id": "{{#start.current_assessment_id#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: llm_compare
+      type: custom
+      position:
+        x: 960
+        y: 140
+      data:
+        type: llm
+        title: A4 输出可比性与差异解读
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_compare_sys
+          role: system
+          text: '你是眼底历史对比与科普教育智能体（A4）。绝对禁止使用任何 Emoji。
+
+            严格依据 compare_assessments 返回结果说明：
+
+            1. 若 comparable=false，明确解释不可比原因（如眼别为 unknown 需先确认，两个 unknown 不代表同一只眼；或左右眼不一致；或质控不合格）；
+
+            2. 若 comparable=true，展示版本一致性、糖网分期变化及标签达线变化，并用 Markdown 表格汇总关键变化；
+
+            3. **医学红线**：明确重申模型分类分数不具备严重度量纲，得分波动仅代表同方法下两张图输出响应差异，绝不能直接写成临床病情恶化或好转。'
+        - id: llm_compare_usr
+          role: user
+          text: '用户问题：{{#start.user_query#}}
+
+            对比接口返回JSON：{{#http_compare.body#}}'
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: http_ctx
+      type: custom
+      position:
+        x: 660
+        y: 390
+      data:
+        type: http-request
+        title: 拉取近期检查与双眼列表
+        desc: ''
+        method: get
+        url: https://severj.top/v1/context?session_id={{#start.session_id#}}
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: none
+          data: []
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: llm_list_eyes
+      type: custom
+      position:
+        x: 960
+        y: 390
+      data:
+        type: llm
+        title: 整理左/右眼汇总并引导选择
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_list_eyes_sys
+          role: system
+          text: '你是眼底历史对比助手（A4）。绝对禁止使用任何 Emoji。
+
+            根据 get_context 返回的 recent_assessments 列表，向用户清晰展示已保存检查的 assessment_id、时间、眼别（left/right/unknown）：
+
+            1. 若分别存在左眼与右眼记录，整理成双眼并列摘要表格；
+
+            2. 若用户希望对比同一只眼变化但记录仍标为 unknown 或仅有一条记录，清晰指引补充确认左右眼别或补充对应眼别检查 ID 后再对比。'
+        - id: llm_list_eyes_usr
+          role: user
+          text: '用户问题：{{#start.user_query#}}
+
+            上下文记录列表：{{#http_ctx.body#}}'
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end_cmp
+      type: custom
+      position:
+        x: 1260
+        y: 140
+      data:
+        type: end
+        title: 结束（对比报告）
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_compare
+          - text
+        - variable: comparison_json
+          value_selector:
+          - http_compare
+          - body
+    - id: end_ctx
+      type: custom
+      position:
+        x: 1260
+        y: 390
+      data:
+        type: end
+        title: 结束（检查汇总）
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_list_eyes
+          - text
+    edges:
+    - id: start__source__to__if_two_ids
+      source: start
+      sourceHandle: source
+      target: if_two_ids
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: if-else
+    - id: if_two_ids__true__to__http_compare
+      source: if_two_ids
+      sourceHandle: 'true'
+      target: http_compare
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+    - id: http_compare__source__to__llm_compare
+      source: http_compare
+      sourceHandle: source
+      target: llm_compare
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_compare__source__to__end_cmp
+      source: llm_compare
+      sourceHandle: source
+      target: end_cmp
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+    - id: if_two_ids__false__to__http_ctx
+      source: if_two_ids
+      sourceHandle: 'false'
+      target: http_ctx
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+    - id: http_ctx__source__to__llm_list_eyes
+      source: http_ctx
+      sourceHandle: source
+      target: llm_list_eyes
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_list_eyes__source__to__end_ctx
+      source: llm_list_eyes
+      sourceHandle: source
+      target: end_ctx
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end

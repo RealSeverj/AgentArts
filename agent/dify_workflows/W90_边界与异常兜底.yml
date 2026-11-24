@@ -1,0 +1,124 @@
+app:
+  description: 多智能体默认工作流：处理非眼科闲聊、普通自拍/眼表/OCT 图像范围说明，并提供正确使用指引与集成工作台入口。
+  icon: W9
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: W90_边界与异常兜底
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        variables:
+        - variable: user_query
+          label: 用户输入
+          type: paragraph
+          required: true
+          max_length: 2000
+          options: []
+    - id: llm_fallback
+      type: custom
+      position:
+        x: 380
+        y: 240
+      data:
+        type: llm
+        title: 边界说明与操作引导
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_fallback_sys
+          role: system
+          text: '你是眼底筛查与随访多智能体系统的默认兜底助手（W90）。绝对禁止使用任何 Emoji。
+
+            当用户提问超出眼底筛查范围、上传了普通自拍/眼表外照/OCT 图像，或遇到任务异常时：
+
+            1. 礼貌说明本系统适用范围：基于彩色眼底相机照片的六模型辅助筛查、四类病灶定位、症状优先随访与大众科普；
+
+            2. 如用户描述了突发飞蚊、闪光感、幕帘遮挡、突发视力骤降或剧烈眼痛，无论场景必须优先提醒立即线下眼科急诊；
+
+            3. 引导用户可上传清晰的眼底彩色照（附带左/右眼说明），或前往在线可视化演示工作台体验： https://severj.top/v1/demo
+            。'
+        - id: llm_fallback_usr
+          role: user
+          text: 用户输入：{{#start.user_query#}}
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      position:
+        x: 680
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_fallback
+          - text
+    edges:
+    - id: start__source__to__llm_fallback
+      source: start
+      sourceHandle: source
+      target: llm_fallback
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: llm
+    - id: llm_fallback__source__to__end
+      source: llm_fallback
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end

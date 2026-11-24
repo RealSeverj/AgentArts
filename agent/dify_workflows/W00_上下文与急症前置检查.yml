@@ -1,0 +1,174 @@
+app:
+  description: 多智能体起始工作流：每轮必先加载当前会话绑定检查与近期列表，识别受众身份，并抢先扫描眼科急症警示症状。
+  icon: W0
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: W00_上下文与急症前置检查
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        variables:
+        - variable: query
+          label: 用户本轮输入
+          type: paragraph
+          required: true
+          max_length: 2000
+          options: []
+        - variable: session_id
+          label: 会话ID（默认 default）
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+    - id: http_context
+      type: custom
+      position:
+        x: 360
+        y: 240
+      data:
+        type: http-request
+        title: 获取当前检查上下文
+        desc: ''
+        method: get
+        url: https://severj.top/v1/context?session_id={{#start.session_id#}}
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: none
+          data: []
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: llm_triage_entry
+      type: custom
+      position:
+        x: 660
+        y: 240
+      data:
+        type: llm
+        title: 入口状态与急症受众识别
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_triage_entry_sys
+          role: system
+          text: '你是眼底筛查多智能体应用的起始路由预处理助手。禁止使用任何 Emoji。
+
+            根据用户输入和后端返回的上下文 JSON，提炼如下结构化摘要供下游子工作流引用：
+
+            1. active_assessment_id 与 eye（若无记录则明确写无）；
+
+            2. urgent_flag：若用户文本含突发大量飞蚊/黑影飘动、闪光感、黑幕样视野遮挡、突发视力骤降或剧烈眼痛伴头痛恶心（且非否定表述），标记为
+            URGENT；否则 NORMAL；
+
+            3. audience：识别为 patient（受检者/大众体检）、caregiver（陪诊家属/替父母子女咨询）或 clinician（基层医生）；
+
+            4. 若 urgent_flag=URGENT，在输出第一行醒目提醒立即前往眼科急诊。'
+        - id: llm_triage_entry_usr
+          role: user
+          text: '用户输入：{{#start.query#}}
+
+            后端上下文返回状态码：{{#http_context.status_code#}}
+
+            后端上下文内容：{{#http_context.body#}}'
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      position:
+        x: 960
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        outputs:
+        - variable: triage_summary
+          value_selector:
+          - llm_triage_entry
+          - text
+        - variable: context_json
+          value_selector:
+          - http_context
+          - body
+    edges:
+    - id: start__source__to__http_context
+      source: start
+      sourceHandle: source
+      target: http_context
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+    - id: http_context__source__to__llm_triage_entry
+      source: http_context
+      sourceHandle: source
+      target: llm_triage_entry
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: llm
+    - id: llm_triage_entry__source__to__end
+      source: llm_triage_entry
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end

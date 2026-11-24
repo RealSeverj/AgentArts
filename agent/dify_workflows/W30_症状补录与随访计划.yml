@@ -1,0 +1,293 @@
+app:
+  description: 固化记录眼别/症状/病史（record_intake）后立即调用确定性规则引擎（evaluate_care），严格贯彻急症优先红线并输出随访清单。
+  icon: W3
+  icon_background: '#EFF6FF'
+  mode: workflow
+  name: W30_症状补录与随访计划
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - remote_url
+        - local_file
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    nodes:
+    - id: start
+      type: custom
+      position:
+        x: 80
+        y: 240
+      data:
+        type: start
+        title: 开始
+        desc: ''
+        variables:
+        - variable: assessment_id
+          label: 目标检查 assessment_id
+          type: text-input
+          required: true
+          max_length: 128
+          options: []
+        - variable: session_id
+          label: 会话ID（默认 default）
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+        - variable: eye
+          label: 眼别（left / right / unknown，未提留空）
+          type: text-input
+          required: false
+          max_length: 32
+          options: []
+        - variable: symptoms
+          label: 症状补充（逗号分隔）
+          type: text-input
+          required: false
+          max_length: 512
+          options: []
+        - variable: symptom_onset
+          label: 起病时间
+          type: text-input
+          required: false
+          max_length: 128
+          options: []
+        - variable: history
+          label: 慢病与既往激光/手术史（逗号分隔）
+          type: text-input
+          required: false
+          max_length: 512
+          options: []
+        - variable: confirmed_plan
+          label: 线下医生既有医嘱安排
+          type: text-input
+          required: false
+          max_length: 512
+          options: []
+        - variable: audience
+          label: 受众视角（patient / caregiver / clinician）
+          type: text-input
+          required: false
+          max_length: 32
+          options: []
+    - id: http_intake
+      type: custom
+      position:
+        x: 360
+        y: 240
+      data:
+        type: http-request
+        title: 保存结构化症状与眼别
+        desc: ''
+        method: post
+        url: https://severj.top/v1/intake
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_intake_json_body
+            key: ''
+            type: text
+            value: '{"assessment_id": "{{#start.assessment_id#}}", "session_id": "{{#start.session_id#}}",
+              "eye": "{{#start.eye#}}", "symptoms": "{{#start.symptoms#}}", "symptom_onset":
+              "{{#start.symptom_onset#}}", "history": "{{#start.history#}}", "confirmed_plan":
+              "{{#start.confirmed_plan#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: http_care
+      type: custom
+      position:
+        x: 660
+        y: 240
+      data:
+        type: http-request
+        title: 执行确定性随访规则引擎
+        desc: ''
+        method: post
+        url: https://severj.top/v1/care/evaluate
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type: application/json
+
+          X-API-Key: YOUR_RETINA_API_KEY'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: http_care_json_body
+            key: ''
+            type: text
+            value: '{"assessment_id": "{{#start.assessment_id#}}", "session_id": "{{#start.session_id#}}"}'
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 15
+          max_write_timeout: 30
+        ssl_verify: true
+    - id: kb_care
+      type: custom
+      position:
+        x: 960
+        y: 240
+      data:
+        type: knowledge-retrieval
+        title: 检索急症与专科随访依据
+        desc: ''
+        query_variable_selector:
+        - start
+        - symptoms
+        dataset_ids:
+        - REPLACE_WITH_AGENTARTS_KB_ID
+        retrieval_mode: multiple
+        multiple_retrieval_config:
+          top_k: 5
+          score_threshold: 0.35
+          reranking_enable: false
+    - id: llm_care_plan
+      type: custom
+      position:
+        x: 1260
+        y: 240
+      data:
+        type: llm
+        title: A3 生成可执行随访计划
+        desc: ''
+        model:
+          provider: deepseek
+          name: deepseek-chat
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - id: llm_care_plan_sys
+          role: system
+          text: '你是眼底随访管理智能体（A3）。绝对禁止使用任何 Emoji 表情符号。
+
+            严格依据 evaluate_care 工具返回的结构化计划与规则编号生成回复：
+
+            1. 安全红线：若返回的 care_priority 为 urgent_ophthalmology，必须在第一行加粗置顶 **立即眼科急诊评估**
+            并解释命中症状（引用 [SRC_NEI_RD_URGENT]），说明影像结果不能降低急症优先级；
+
+            2. 按工具返回的 priority_label、followup_time、actions、monitoring_items、questions_for_clinician
+            组织清晰的表格或要点清单；若面向 caregiver（陪诊家属），附加诊前资料准备提示 [SRC_EDU_CAREGIVER_GUIDE]；
+
+            3. 若 missing_facts/questions_to_confirm 非空，仅温和追问这 1~2 个关键缺失项；
+
+            4. 严禁修改工具给定的优先级、复查时间或规则依据；末尾若存在 report_url，务必附上实时同步后的报告与 PDF 导出链接。'
+        - id: llm_care_plan_usr
+          role: user
+          text: '受众模式：{{#start.audience#}}
+
+            入库回执：{{#http_intake.body#}}
+
+            规则引擎随访计划：{{#http_care.body#}}
+
+            知识库参考：{{#kb_care.result#}}'
+        context:
+          enabled: true
+          variable_selector:
+          - kb_care
+          - result
+        vision:
+          enabled: false
+        memory:
+          role_prefix:
+            user: ''
+            assistant: ''
+        selected_variables: []
+    - id: end
+      type: custom
+      position:
+        x: 1560
+        y: 240
+      data:
+        type: end
+        title: 结束
+        desc: ''
+        outputs:
+        - variable: answer
+          value_selector:
+          - llm_care_plan
+          - text
+        - variable: care_plan_json
+          value_selector:
+          - http_care
+          - body
+    edges:
+    - id: start__source__to__http_intake
+      source: start
+      sourceHandle: source
+      target: http_intake
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+    - id: http_intake__source__to__http_care
+      source: http_intake
+      sourceHandle: source
+      target: http_care
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: http-request
+    - id: http_care__source__to__kb_care
+      source: http_care
+      sourceHandle: source
+      target: kb_care
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: knowledge-retrieval
+    - id: kb_care__source__to__llm_care_plan
+      source: kb_care
+      sourceHandle: source
+      target: llm_care_plan
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+    - id: llm_care_plan__source__to__end
+      source: llm_care_plan
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
