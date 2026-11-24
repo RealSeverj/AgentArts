@@ -146,6 +146,15 @@ class HospitalClosedLoopTests(unittest.TestCase):
             self.assertEqual(chat_edu.status_code, 200)
             self.assertIn("眼压", chat_edu.json()["reply"])
 
+    def test_root_launcher_parser(self):
+        import run as root_run
+
+        parser = root_run.build_parser()
+        self.assertIsNone(parser.parse_args([]).command)
+        self.assertEqual(parser.parse_args(["local"]).command, "local")
+        self.assertEqual(parser.parse_args(["test"]).command, "test")
+        self.assertEqual(parser.parse_args(["export"]).command, "export")
+
 
 if __name__ == "__main__":
     unittest.main()

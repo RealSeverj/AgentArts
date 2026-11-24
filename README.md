@@ -8,14 +8,20 @@
 
 ## 快速启动与演示入口
 
-使用 `conda py310` 环境运行本地推理后端与集成演示工作台：
+直接在项目根目录运行一键脚本即可自动切换 `conda py310` 环境并拉起后端与公网 SSH 隧道：
 
 ```powershell
-# 启动推理服务与公网演示端
-C:\Users\Severj\anaconda3\envs\py310\python.exe portable/run.py serve --public-origin https://severj.top
+# 一键启动全套服务（本地推理 + 医患门户 + 拍片室 + 公网 https://severj.top SSH 反向隧道）
+python run.py
+
+# 仅启动本机服务（断网/本地演示，不连远程 SSH 隧道）
+python run.py local
 
 # 运行精简后的全量单元测试
-C:\Users\Severj\anaconda3\envs\py310\python.exe -m unittest discover -s tests
+python run.py test
+
+# 一键刷新导出华为云 AgentArts 双应用 Dify 0.6.0 工作流包
+python run.py export
 ```
 
 - **医患双端在线演示门户**：`http://127.0.0.1:8000/v1/demo`（公网映射：`https://severj.top/v1/demo`）
