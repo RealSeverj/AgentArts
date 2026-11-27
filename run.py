@@ -1,10 +1,10 @@
 """One-click launcher for the Retinal Screening & Hospital Closed-Loop System.
 
 Usage:
-    python run.py           # Start API + Hospital Portal + SSH public tunnel (default: https://severj.top)
-    python run.py local     # Start local API + Hospital Portal only (no SSH tunnel)
-    python run.py test      # Run full unit test suite
-    python run.py export    # Refresh AgentArts single-agent JSONL and dual-app Dify 0.6.0 YAML bundles
+    python run.py           # Start the local API and hospital portal
+    python run.py up --origin https://retina.example.com --ssh-host retina-server
+    python run.py test      # Run the unit test suite
+    python run.py export    # Write the local Dify 0.6.0 YAML bundle
 """
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ import sys
 import threading
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_PUBLIC_ORIGIN = "https://severj.top"
-DEFAULT_SSH_HOST = "severj-cn"
+DEFAULT_PUBLIC_ORIGIN = "https://retina.example.com"
+DEFAULT_SSH_HOST = "retina-server"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_REMOTE_PORT = 18000
@@ -116,28 +116,11 @@ class TunnelSupervisor:
 
 
 def cmd_export(origin: str) -> None:
+    from agent.export_dify_workflows import export_dify_workflows, origin_url
     from portable.run import new_machine_key
 
-    api_key = new_machine_key()
-    out_root = ROOT / "agent" / "agent_ready_severj"
-    dify_dir = out_root / "dify_workflows"
-    out_root.mkdir(parents=True, exist_ok=True)
-
-    # Refresh sanitized repo copy + local key-embedded copy
-    subprocess.run(
-        [sys.executable, str(ROOT / "agent" / "export_dify_workflows.py"), "--origin", origin],
-        check=True,
-    )
-    subprocess.run(
-        [
-            sys.executable,
-            str(ROOT / "agent" / "export_dify_workflows.py"),
-            "--origin", origin,
-            "--output", str(dify_dir),
-            "--api-key", api_key,
-        ],
-        check=True,
-    )
+    dify_dir = ROOT / "agent" / "agent_ready_local" / "dify_workflows"
+    export_dify_workflows(dify_dir, origin=origin_url(origin), api_key=new_machine_key())
     print(f"[导出] 已生成 Dify 0.6.0 双应用工作流至：{dify_dir}")
 
 
@@ -146,14 +129,10 @@ def cmd_test() -> int:
     return res.returncode
 
 
-def cmd_serve(*, with_tunnel: bool, public_origin: str, ssh_host: str, host: str, port: int, remote_port: int, device: str) -> None:
+def cmd_serve(*, with_tunnel: bool, public_origin: str, ssh_host: str, host: str, port: int, remote_port: int,
+              device: str, maas_llm: bool = False) -> None:
     sys.path.insert(0, str(ROOT))
-    from portable.run import new_machine_key, serve
-
-    new_machine_key()
-    dify_dir = ROOT / "agent" / "agent_ready_severj" / "dify_workflows"
-    if not dify_dir.is_dir():
-        cmd_export(public_origin)
+    from portable.run import serve
 
     tunnel: TunnelSupervisor | None = None
     if with_tunnel:
@@ -177,6 +156,8 @@ def cmd_serve(*, with_tunnel: bool, public_origin: str, ssh_host: str, host: str
         port=port,
         device=device,
         public_origin=public_origin if with_tunnel else None,
+        local_llm=not with_tunnel and not maas_llm,
+        maas_llm=maas_llm,
     )
     try:
         serve(serve_args)
@@ -198,6 +179,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--port", type=int, default=DEFAULT_PORT)
         p.add_argument("--remote-port", type=int, default=DEFAULT_REMOTE_PORT)
         p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+        if name == "local":
+            p.add_argument("--maas-llm", action="store_true", help="使用华为 MaaS DeepSeek 生成报告解读")
 
     exp = sub.add_parser("export", help="刷新导出 AgentArts 工作流包")
     exp.add_argument("--origin", default=DEFAULT_PUBLIC_ORIGIN)
@@ -210,7 +193,7 @@ def main() -> int:
     _ensure_py310()
     parser = build_parser()
     args = parser.parse_args()
-    cmd = args.command or "up"
+    cmd = args.command or "local"
 
     if cmd == "test":
         return cmd_test()
@@ -226,6 +209,7 @@ def main() -> int:
             port=getattr(args, "port", DEFAULT_PORT),
             remote_port=getattr(args, "remote_port", DEFAULT_REMOTE_PORT),
             device=getattr(args, "device", "auto"),
+            maas_llm=getattr(args, "maas_llm", False),
         )
         return 0
     return 0

@@ -12,6 +12,7 @@ from inference.hospital_system import (
     extract_eye,
     extract_phone,
 )
+from inference.report_levels import display_report_level, report_level_css
 
 
 def handle_patient_session_query(store: HospitalSystemStore, query: str) -> dict[str, Any]:
@@ -68,6 +69,7 @@ def handle_patient_report_query(store: HospitalSystemStore, query: str, engine: 
         return {"ok": False, "bound": False, "reply": f"系统里暂时没有找到 {phone} 的档案记录。"}
     reply = store.build_patient_reply(res)
     rep = res.get("report")
+    decision = ((rep or {}).get("care_plan") or {}).get("clinical_decision") or {}
     return {
         "ok": True,
         "bound": True,
@@ -77,6 +79,7 @@ def handle_patient_report_query(store: HospitalSystemStore, query: str, engine: 
         "has_image": res.get("has_image"),
         "has_new_image": res.get("has_new_image"),
         "patient_report_url": rep["urls"]["patient_report_url"] if rep else None,
+        "clinical_level": decision.get("level"),
         "comparison": rep.get("comparison") if rep else None,
         "reply": reply,
     }
@@ -192,6 +195,7 @@ def handle_doctor_diagnose_query(store: HospitalSystemStore, query: str, engine:
         return {"ok": False, "bound": False, "reply": f"未查询到患者 {phone} 的院内档案。"}
     reply = store.build_doctor_reply(res)
     rep = res.get("report")
+    decision = ((rep or {}).get("care_plan") or {}).get("clinical_decision")
     return {
         "ok": True,
         "bound": True,
@@ -201,6 +205,8 @@ def handle_doctor_diagnose_query(store: HospitalSystemStore, query: str, engine:
         "has_image": res.get("has_image"),
         "has_new_image": res.get("has_new_image"),
         "doctor_report_url": rep["urls"]["doctor_report_url"] if rep else None,
+        "clinical_decision": decision,
+        "clinical_level": display_report_level(decision) if rep else None,
         "comparison": rep.get("comparison") if rep else None,
         "reply": reply,
     }
@@ -230,9 +236,12 @@ def handle_doctor_records_query(store: HospitalSystemStore, query: str) -> dict[
     for idx, r in enumerate(reports[:4], 1):
         eye_txt = EYE_MEDICAL.get(r["eye"], r["eye"])
         grade_txt = f"DR {r['dr_grade']}级" if r.get("dr_grade") is not None else "分期未完成"
+        level = display_report_level({"level": r.get("clinical_level")})
+        decision_txt = " · ".join(filter(None, (level, r.get("clinical_title"))))
+        details = "，".join(filter(None, (r["analyzed_utc"][:10], grade_txt, decision_txt)))
         lines.append(
-            f"{idx}. {eye_txt}（{r['analyzed_utc'][:10]}，{grade_txt}）："
-            f"[打开临床报告 PDF]({r['doctor_report_url']})"
+            f"{idx}. {eye_txt}（{details}）："
+            f"[打开临床报告]({r['doctor_report_url']})"
         )
     return {
         "ok": True,
@@ -612,6 +621,11 @@ def render_dual_portal_html(*, ready: bool) -> str:
   .badge{{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}}
   .b-pend{{background:#fef3c7;color:#92400e}}
   .b-done{{background:#dcfce7;color:#166534}}
+  .level-chip{{display:inline-block;padding:1px 7px;border:1px solid;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}}
+  .img-report-status{{flex-shrink:0;text-align:right}}
+  .img-report-status .level-chip{{margin-left:4px}}
+  .bubble .level-chip{{margin-bottom:5px}}
+  {report_level_css()}
   @media (max-width:960px){{.shell{{grid-template-columns:1fr}}}}
 </style>
 </head>
@@ -671,23 +685,37 @@ def render_dual_portal_html(*, ready: bool) -> str:
 <script>
 (() => {{
   const el = (id) => document.getElementById(id);
-  let role = "patient";
+  let role = new URLSearchParams(window.location.search).get("role") === "doctor" ? "doctor" : "patient";
 
   function esc(s) {{
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}}[c]));
   }}
 
+  function localDoctorReportUrl(url) {{
+    const match = /^(?:https?:\\/\\/[^/]+)?(\\/v1\\/his\\/reports\\/[A-Za-z0-9_-]+\\/doctor\\.html)$/.exec(url);
+    return match ? match[1] : url;
+  }}
+
   function linkifyMarkdown(text) {{
     let safe = esc(text);
     safe = safe.replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>");
-    safe = safe.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+|\\/v1\\/[^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    safe = safe.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+|\\/v1\\/[^)]+)\\)/g, (_match, label, url) => {{
+      const href = role === "doctor" ? localDoctorReportUrl(url) : url;
+      return `<a href="${{href}}" target="_blank" rel="noopener">${{label}}</a>`;
+    }});
     return safe;
   }}
 
-  function addBubble(who, text) {{
+  function levelChip(level, title) {{
+    if (!/^L[0-4]$/.test(level || "")) return "";
+    return `<span class="level-chip" data-level="${{level}}" title="${{esc(title || "分诊级别")}}">${{level}}</span>`;
+  }}
+
+  function addBubble(who, text, level, title) {{
     const div = document.createElement("div");
     div.className = "bubble " + who;
-    div.innerHTML = who === "agent" ? linkifyMarkdown(text) : esc(text);
+    const chip = who === "agent" ? levelChip(level, title) : "";
+    div.innerHTML = who === "agent" ? (chip ? chip + "<br>" : "") + linkifyMarkdown(text) : esc(text);
     el("chatBox").appendChild(div);
     el("chatBox").scrollTop = el("chatBox").scrollHeight;
   }}
@@ -716,13 +744,21 @@ def render_dual_portal_html(*, ready: bool) -> str:
       `<div>眼科史：${{esc(p.eye_history || "无")}}</div>`;
     const box = el("hisImagesBox");
     box.innerHTML = "";
+    const reports = new Map((data.reports || []).map((report) => [report.report_id, report]));
     for (const im of (data.images || [])) {{
       const isPend = im.status === "pending";
       const badge = isPend ? '<span class="badge b-pend">今日新片·待分析</span>' : '<span class="badge b-done">已分析</span>';
-      const repLink = im.report_urls
-        ? `<a href="${{esc(role === "doctor" ? im.report_urls.doctor_report_url : im.report_urls.patient_report_url)}}" target="_blank">查看报告</a>`
+      const report = reports.get(im.latest_report_id);
+      const reportUrl = role === "doctor"
+        ? localDoctorReportUrl(im.report_urls?.doctor_report_url)
+        : im.report_urls?.patient_report_url;
+      const referralChip = role === "doctor" && report && reportUrl
+        ? levelChip(report.clinical_level ?? "L0", report.clinical_title || "待复核")
         : "";
-      box.innerHTML += `<div class="img-row"><div><strong>${{im.eye === "left" ? "左眼" : "右眼"}}</strong> · ${{esc(im.note)}}<br><span style="color:#64748b">${{esc(im.captured_utc.slice(0,19).replace("T"," "))}}</span></div><div style="text-align:right">${{badge}}<br>${{repLink}}</div></div>`;
+      const repLink = reportUrl
+        ? `<a href="${{esc(reportUrl)}}" target="_blank" rel="noopener">${{role === "doctor" ? "查看临床报告" : "查看报告"}}</a>`
+        : "";
+      box.innerHTML += `<div class="img-row"><div><strong>${{im.eye === "left" ? "左眼" : "右眼"}}</strong> · ${{esc(im.note)}}<br><span style="color:#64748b">${{esc(im.captured_utc.slice(0,19).replace("T"," "))}}</span></div><div class="img-report-status">${{badge}}${{referralChip}}<br>${{repLink}}</div></div>`;
     }}
   }}
 
@@ -802,11 +838,13 @@ def render_dual_portal_html(*, ready: bool) -> str:
         body: JSON.stringify(payload),
       }});
       const d = await r.json();
-      addBubble("agent", d.reply || d.message || "已完成处理。");
+      const isDoctorReport = role === "doctor" && d.role === "doctor" && d.doctor_report_url;
+      const reportLevel = isDoctorReport ? d.clinical_level : null;
+      addBubble("agent", d.reply || d.message || "已完成处理。", reportLevel, d.clinical_decision?.title);
       if (d.overview) {{
         renderOverview(d.overview);
       }} else if (d.patient || d.images) {{
-        renderOverview({{patient: d.patient, images: d.images || []}});
+        renderOverview({{patient: d.patient, images: d.images, reports: d.reports}});
       }}
     }} finally {{
       el("sendBtn").disabled = false;

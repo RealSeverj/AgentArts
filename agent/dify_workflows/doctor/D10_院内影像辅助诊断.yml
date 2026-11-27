@@ -119,7 +119,7 @@ workflow:
         desc: ''
         selected: false
         method: post
-        url: https://severj.top/v1/his/agent/doctor/diagnose
+        url: https://retina.example.com/v1/his/agent/doctor/diagnose
         authorization:
           type: no-auth
           config: null

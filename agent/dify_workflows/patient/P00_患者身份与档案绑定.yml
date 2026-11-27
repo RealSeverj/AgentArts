@@ -108,7 +108,7 @@ workflow:
         desc: ''
         selected: false
         method: post
-        url: https://severj.top/v1/his/agent/patient/session
+        url: https://retina.example.com/v1/his/agent/patient/session
         authorization:
           type: no-auth
           config: null

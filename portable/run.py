@@ -1,5 +1,6 @@
 """Portable entry points for same-image offline reporting and the AgentArts HTTPS backend."""
 import argparse
+from contextlib import nullcontext
 from dataclasses import replace
 import html
 import json
@@ -49,13 +50,43 @@ def serve(args):
 
     settings = replace(service_settings(args.device), api_key=new_machine_key(),
                        visual_origin=args.public_origin)
-    app = create_app(settings)
-    uvicorn.run(app, host=args.host, port=args.port, access_log=False, proxy_headers=False)
+    llm_context = nullcontext()
+    use_local = getattr(args, "local_llm", False)
+    use_maas = getattr(args, "maas_llm", False)
+    if use_local and use_maas:
+        raise ValueError("请选择一种报告解读服务：--local-llm 或 --maas-llm。")
+    if (use_local or use_maas) and (args.host not in {"127.0.0.1", "localhost", "::1"} or args.public_origin):
+        print("[大模型解读] 启用条件为本机回环地址和本机门户。", flush=True)
+    elif use_maas:
+        from inference.local_llm import MaaSReportExplainer
+
+        api_key = os.environ.get("MAAS_API_KEY", "").strip()
+        if api_key:
+            llm_context = nullcontext(MaaSReportExplainer(api_key=api_key))
+            print("[华为 MaaS] 已配置 DeepSeek 报告解读。", flush=True)
+        else:
+            print("[华为 MaaS] 请设置 MAAS_API_KEY 以启用 DeepSeek 解读，病例报告可继续使用。", flush=True)
+    elif use_local:
+        from inference.local_llm import DEFAULT_LOCAL_LLM_PORT
+        from portable.local_llm_server import local_llm_server
+
+        llm_port = getattr(args, "local_llm_port", None)
+        if llm_port is None:
+            llm_port = DEFAULT_LOCAL_LLM_PORT
+        if not 1 <= llm_port <= 65535 or llm_port == args.port:
+            print("[本地大模型] 请指定一个与门户不同的有效端口。", flush=True)
+        else:
+            llm_context = local_llm_server(ROOT, llm_port)
+
+    with llm_context as report_explainer:
+        app = create_app(settings, report_explainer=report_explainer)
+        uvicorn.run(app, host=args.host, port=args.port, access_log=False, proxy_headers=False)
 
 
 def demo(args):
     import torch
     from inference.clinical_review import build_clinical_review
+    from inference.clinical_workflow import evaluate_care_rules
     from inference.engine import FundusEngine
     from inference.image_io import URLFetchPolicy, decode_image_bytes
     from inference.registry import ModelRegistry
@@ -87,6 +118,7 @@ def demo(args):
         review = build_clinical_review(result, visual)
         result["visual_report"] = visual
         result["report_summary"]["clinical_review"] = review
+        result["report_summary"]["clinical_decision"] = evaluate_care_rules(result, {})["clinical_decision"]
         completed = Path(folder) / request_id
         if not completed.exists():
             completed.mkdir()
@@ -112,6 +144,11 @@ def main():
     server.add_argument("--port", type=int, default=8000)
     server.add_argument("--public-origin", default=os.environ.get("RETINA_PUBLIC_ORIGIN"),
                         help="Public HTTPS origin serving this API and /v1/view for AgentArts")
+    llm_provider = server.add_mutually_exclusive_group()
+    llm_provider.add_argument("--local-llm", action="store_true", help="Enable the bundled offline report explanation model")
+    llm_provider.add_argument("--maas-llm", action="store_true", help="Enable Huawei MaaS DeepSeek report explanation using MAAS_API_KEY")
+    server.add_argument("--local-llm-port", type=int,
+                        help="Loopback port for the local language model (default: 8091)")
     for command in (local, server):
         command.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     args = parser.parse_args()

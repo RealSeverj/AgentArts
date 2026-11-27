@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
-DEFAULT_ORIGIN = "https://severj.top"
+DEFAULT_ORIGIN = "https://retina.example.com"
 PLACEHOLDER_API_KEY = "YOUR_RETINA_API_KEY"
 DEFAULT_KB_ID = "REPLACE_WITH_AGENTARTS_KB_ID"
 

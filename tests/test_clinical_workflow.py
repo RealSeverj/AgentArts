@@ -2,18 +2,29 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from inference.app import create_app
 from inference.clinical_workflow import ClinicalWorkflowStore
+from inference.demo_workbench import DEMO_SAMPLES
 from inference.image_io import DecodedImage
 from inference.settings import Settings
 
 KEY = "workflow-test-" + "k" * 32
 HEADERS = {"X-API-Key": KEY}
 URL = "https://public.example/fundus.jpg"
+VISUAL_ORIGIN = "https://retina.example.com"
+
+
+def write_sample_image(path, color=(128, 66, 40)):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with Image.new("RGB", (64, 64), (0, 0, 0)) as image:
+        ImageDraw.Draw(image).ellipse((4, 4, 59, 59), fill=color)
+        image.save(path, format="JPEG")
 
 
 def fake_fetcher(url, *, policy):
@@ -284,14 +295,14 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertEqual(cmp_rej["reason"], "quality_not_comparable")
 
     def test_dynamic_report_syncs_latest_care_plan_and_pdf_print_styles(self):
-        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin=VISUAL_ORIGIN)
         with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
             screen = client.post("/v1/screen_fundus", json={"image_url": URL}, headers=HEADERS)
             self.assertEqual(screen.status_code, 200)
             payload = screen.json()
             report_url = payload["visual_report"]["report_url"]
-            self.assertTrue(report_url.startswith("https://severj.top/v1/view/"))
-            view_path = "/" + report_url.split("https://severj.top/", 1)[1]
+            self.assertTrue(report_url.startswith(f"{VISUAL_ORIGIN}/v1/view/"))
+            view_path = urlsplit(report_url).path
 
             initial_html = client.get(view_path)
             self.assertEqual(initial_html.status_code, 200)
@@ -313,10 +324,10 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertIn("左眼（OS）", updated_html.text)
             self.assertIn("突发大量飞蚊", updated_html.text)
             self.assertIn("立即眼科急诊评估", updated_html.text)
-            self.assertIn("随访计划 v1", updated_html.text)
+            self.assertIn("已生成随访计划", updated_html.text)
 
     def test_two_sequential_images_preserve_distinct_eye_bindings(self):
-        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin=VISUAL_ORIGIN)
         with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
             r_left = client.post(
                 "/v1/screen_fundus",
@@ -325,7 +336,7 @@ class ClinicalWorkflowTests(unittest.TestCase):
             )
             self.assertEqual(r_left.status_code, 200)
             id_left = r_left.json()["request_id"]
-            path_left = "/" + r_left.json()["visual_report"]["report_url"].split("https://severj.top/", 1)[1]
+            path_left = urlsplit(r_left.json()["visual_report"]["report_url"]).path
 
             self.engine.mode = "normal"
             r_right = client.post(
@@ -335,7 +346,7 @@ class ClinicalWorkflowTests(unittest.TestCase):
             )
             self.assertEqual(r_right.status_code, 200)
             id_right = r_right.json()["request_id"]
-            path_right = "/" + r_right.json()["visual_report"]["report_url"].split("https://severj.top/", 1)[1]
+            path_right = urlsplit(r_right.json()["visual_report"]["report_url"]).path
 
             html_left = client.get(path_left).text
             html_right = client.get(path_right).text
@@ -359,8 +370,13 @@ class ClinicalWorkflowTests(unittest.TestCase):
             self.assertEqual(right_asmt["intake"]["history"], [])
 
     def test_demo_workbench_multi_agent_and_no_image_flows(self):
-        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin="https://severj.top")
-        with TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
+        settings = Settings(api_key=KEY, workflow_db=self.db_path, visual_origin=VISUAL_ORIGIN)
+        sources = {}
+        for sample_id, color in (("idrid_03", (128, 66, 40)), ("public_proxy", (150, 80, 52))):
+            path = self.db_path.parent / f"{sample_id}.jpg"
+            write_sample_image(path, color)
+            sources[sample_id] = {**DEMO_SAMPLES[sample_id], "path": path}
+        with patch.dict(DEMO_SAMPLES, sources), TestClient(create_app(settings, engine=self.engine, fetcher=fake_fetcher)) as client:
             page = client.get("/v1/demo")
             self.assertEqual(page.status_code, 200)
             self.assertIn("眼底筛查与随访多智能体演示工作台", page.text)

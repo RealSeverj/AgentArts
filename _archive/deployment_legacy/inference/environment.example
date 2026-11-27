@@ -1,8 +1,0 @@
-# Copy outside the code package, for example /etc/retina-inference.env; chmod 600.
-# Generate a unique key with: python3 -c "import secrets; print(secrets.token_urlsafe(48))"
-RETINA_API_KEY=
-RETINA_DEVICE=auto
-RETINA_PRECISION=auto
-# Paths below assume installation at /opt/retina-inference.
-RETINA_WEIGHTS_ROOT=/opt/retina-inference/weights
-RETINA_SERVICE_CONFIG=/opt/retina-inference/configs/inference/service.json

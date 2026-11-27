@@ -1,6 +1,8 @@
 import base64
 import hashlib
 import io
+import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,8 +10,10 @@ from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
+from inference.clinical_referral import build_clinical_decision
 from inference.clinical_review import build_clinical_review
-from inference.visual_report import LESIONS, REFERENCE_SHA, _comparison, _reference_masks, _report_html, write_visual_report
+from inference.report_levels import display_report_level
+from inference.visual_report import LESIONS, REFERENCE_SHA, _comparison, _decision_section_html, _reference_masks, _report_html, write_visual_report
 
 
 class VisualReportTests(unittest.TestCase):
@@ -91,11 +95,32 @@ class VisualReportTests(unittest.TestCase):
         self.assertIsNone(self.render("tampered")["overlay_url"])
 
     def test_reference_only_matches_exact_known_image_and_dimensions(self):
-        self.assertIsNone(_reference_masks("b" * 64, (4288, 2848)))
-        self.assertIsNone(_reference_masks(REFERENCE_SHA, (2048, 2048)))
-        masks = _reference_masks(REFERENCE_SHA, (4288, 2848))
-        counts = {key: mask.histogram()[255] for key, mask in masks.items()}
-        self.assertEqual(counts, {"MA": 11288, "HE": 162605, "EX": 301586, "SE": 3318})
+        size = (4288, 2848)
+        encoded_mask = self.root / "masks.png"
+        with Image.new("L", size) as mask:
+            mask.putpixel((0, 0), 1 | 2)
+            mask.putpixel((1, 0), 4)
+            mask.putpixel((2, 0), 8)
+            mask.save(encoded_mask)
+        manifest = {
+            "image_sha256": REFERENCE_SHA,
+            "mask_sha256": hashlib.sha256(encoded_mask.read_bytes()).hexdigest(),
+            "dr_grade": 3,
+            "source_image_id": "IDRiD_03",
+            "grading_image_id": "IDRiD_369",
+        }
+        (self.root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        with patch("inference.visual_report.REFERENCE_FOLDER", self.root):
+            self.assertIsNone(_reference_masks("b" * 64, size))
+            self.assertIsNone(_reference_masks(REFERENCE_SHA, (2048, 2048)))
+            masks = _reference_masks(REFERENCE_SHA, size)
+            self.assertIsNotNone(masks)
+            for mask in masks.values():
+                self.addCleanup(mask.close)
+            counts = {key: mask.histogram()[255] for key, mask in masks.items()}
+            self.assertEqual(counts, {"MA": 1, "HE": 1, "EX": 1, "SE": 1})
+            encoded_mask.write_bytes(b"tampered")
+            self.assertIsNone(_reference_masks(REFERENCE_SHA, size))
 
     def test_reference_case_does_not_override_an_empty_real_prediction(self):
         frame = Image.new("RGB", (4288, 2848))
@@ -106,11 +131,66 @@ class VisualReportTests(unittest.TestCase):
             source.assert_not_called()
         self.assertEqual(info["candidate_status"], "no_candidates")
         self.assertEqual(info["reference_grade"], 3)
-        self.response["image_sha256"] = REFERENCE_SHA
-        self.response["report_summary"] = {"dr_severity": {"grade": 2, "status": "completed", "score_display": "61分"}}
+        self.response.update(status="ok", image_sha256=REFERENCE_SHA)
+        self.response["report_summary"] = {
+            "dr_severity": {"grade": 2, "status": "completed", "score_display": "61分"},
+            "research": {"glaucoma": {"status": "completed", "items": [{
+                "code": "glaucoma", "name": "青光眼", "research_threshold_met": True, "score_display": "95分",
+            }]}},
+        }
         page = _report_html(info, self.response, True)
-        for value in ("模型分期较专家标注低1级", "中度非增殖期", "重度非增殖期", "61分"):
-            self.assertIn(value, page)
+        _, _, following = page.partition('<h2>主要判读</h2>')
+        primary, _, following = following.partition("</section>")
+        narrative, _, appendix = following.partition('id="tech-details"')
+        self.assertIn("中度非增殖期", primary)
+        self.assertIn("存在重度糖网低估风险", primary)
+        self.assertNotIn("专家标注", primary)
+        self.assertNotIn("模型分期较专家标注低1级", page)
+        self.assertIn("演示样例对照：IDRiD_03 专家标注 3 级", narrative)
+        self.assertIn("重度糖网升阶复核预警", narrative)
+        self.assertNotIn("青光眼模型", narrative)
+        for value in ("青光眼模型", "61分", "95分"):
+            self.assertIn(value, appendix)
+        self.response["image_sha256"] = "b" * 64
+        unrelated_page = _report_html(info, self.response, True)
+        self.assertNotIn("演示样例对照", unrelated_page)
+        self.assertNotIn("重度糖网升阶复核预警", unrelated_page)
+
+    def test_report_metadata_and_patient_plan_omit_internal_identifiers(self):
+        request_id = "b2698a772664a9f06cb00b1d85b1c8d2"
+        self.response.update(
+            status="ok", request_id=request_id, created_utc="2026-11-26T05:35:35+00:00",
+            report_summary={"dr_severity": {"grade": 2, "status": "completed"}},
+        )
+        self.render(request_id)
+        page = (self.root / request_id / "report.html").read_text(encoding="utf-8")
+        self.assertIn("2026-11-26 13:35:35", page)
+        self.assertNotIn("(UTC)", page)
+        self.assertRegex(page, r"RET-20261126-[A-Z0-9]{3,}")
+        self.assertNotIn(request_id, page)
+        self.assertNotRegex(page, r"\b(?:RULE|SRC)_[A-Z0-9_]+")
+        for heading in ("下一步怎么做", "在家留意什么", "就诊时可以问", "就诊前可以准备"):
+            self.assertIn(f"<h3>{heading}</h3>", page)
+
+    def test_referral_chips_show_all_levels_with_distinct_colors(self):
+        self.render()
+        page = (self.root / "check/report.html").read_text(encoding="utf-8")
+        colors = dict(re.findall(r'\.level-chip\[data-level="(L[0-4])"\]\{[^}]*background:([^;]+);', page))
+        self.assertEqual(set(colors), {"L4", "L3", "L2", "L1", "L0"})
+        self.assertEqual(len(set(colors.values())), 5)
+
+        predictions = [{"label_code": "DR", "screening_flag": "negative"}]
+        for grade, quality_ok, shown in ((3, True, "L4"), (2, True, "L3"), (1, True, "L2"),
+                                         (0, True, "L1"), (0, False, "L0"), (None, True, "L0")):
+            with self.subTest(grade=grade, quality_ok=quality_ok):
+                decision = build_clinical_decision({}, predictions, grade, quality_ok=quality_ok, urgent_hits=[])
+                self.assertEqual(display_report_level(decision), shown)
+                body = _decision_section_html(decision)
+                self.assertIn(f'data-level="{shown}">{shown}</span>', body)
+                if shown == "L0":
+                    self.assertIsNone(decision["level"])
+                    self.assertIn("暂无法分级", body)
+        self.assertIsNone(display_report_level(None))
 
     def test_same_nerve_head_triaged_once_and_reference_bound_to_image(self):
         def group(rows):

@@ -1,40 +1,74 @@
-# 眼底筛查与随访多智能体系统（AgentArts）
+# AgentArts 眼底筛查与随访系统
 
-面向华为云 AgentArts（智果）平台的眼底图像辅助筛查、证据溯源解读、症状优先随访决策与大众护眼科普系统。
+面向眼底图像辅助筛查与随访的 FastAPI 项目。包含视觉模型路由、医患门户、拍片室、临床辅助报告、报告解读及 AgentArts／Dify 工作流模板。
 
-- **唯一权威架构与规划文档**：请先阅读 [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md)（已完整沉淀原方案设计、技术架构、标签字典、接口契约、多智能体协同链路与验收剧本）。
-- **知识库文档**：见 [knowledge_base/README.md](knowledge_base/README.md)（共 4 份结构化医学与大众科普文档）。
-- **多智能体与插件构建**：见 [agent/多智能体编排与受众扩展指南.md](agent/多智能体编排与受众扩展指南.md)。
+这份源码包保留应用代码、模型索引、锁定配置和测试。图像推理和预置演示需要分别恢复模型权重与演示素材。数据库和报告在运行时生成，凭证通过启动环境配置。
 
-## 快速启动与演示入口
+## 本机启动
 
-直接在项目根目录运行一键脚本即可自动切换 `conda py310` 环境并拉起后端与公网 SSH 隧道：
+在 Windows 上使用 64 位 Python 3.12，从项目根目录运行以下命令。安装脚本会在项目内创建 `.venv`。
 
 ```powershell
-# 一键启动全套服务（本地推理 + 医患门户 + 拍片室 + 公网 https://severj.top SSH 反向隧道）
-python run.py
-
-# 仅启动本机服务（断网/本地演示，不连远程 SSH 隧道）
-python run.py local
-
-# 运行精简后的全量单元测试
-python run.py test
-
-# 一键刷新导出华为云 AgentArts 双应用 Dify 0.6.0 工作流包
-python run.py export
+py -3.12 portable/install.py --backend cpu
+.\.venv\Scripts\python.exe portable/run.py serve --device cpu --host 127.0.0.1 --port 8766
 ```
 
-- **医患双端在线演示门户**：`http://127.0.0.1:8000/v1/demo`（公网映射：`https://severj.top/v1/demo`）
-- **医院拍片室影像同步模拟系统**：`http://127.0.0.1:8000/v1/imaging_room`（公网映射：`https://severj.top/v1/imaging_room`）
-- **健康与就绪检查**：`GET /healthz`、`GET /readyz`
-- **华为云 AgentArts 导入产物**：`agent/agent_ready_severj/dify_workflows/`（患者端 `patient/*.yml` + 医生端 `doctor/*.yml` 单 `query` 入参 Dify `0.6.0` 工作流包）及 `agent_fundus.jsonl`
+使用 NVIDIA GPU 时，以 `--backend cu118` 安装 CUDA 版依赖，启动时传入 `--device cuda`。
 
-## 目录说明
+- [本机医生端](http://127.0.0.1:8766/v1/demo?role=doctor)
+- [本机患者端](http://127.0.0.1:8766/v1/demo)
+- [本机拍片室](http://127.0.0.1:8766/v1/imaging_room)
+- 服务与模型状态 [服务存活](http://127.0.0.1:8766/healthz) · [视觉推理就绪](http://127.0.0.1:8766/readyz)
 
-- `inference/`：FastAPI 推理边界、六模型路由、四类病灶分割、SQLite 临床工作流规则引擎、动态 A4 PDF 报告及 Web 演示工作台
-- `portable/`：一键离线演示与服务端启动入口 (`portable/run.py`)
-- `agent/`：AgentArts API 插件 Schema、JSONL 导出脚本与 A0~A4 提示词
-- `knowledge_base/`：导入华为云平台知识库的医学指南、标签字典与大众科普文档
-- `tests/`：核心推理、工作流规则、报告渲染与 API 自动化测试集
-- `02_模型训练与评估/`、`cloud_upload/`、`configs/`、`training/`、`scripts/`：经 SHA-256 校验锁定的模型权重与预处理/集成推理模块
-- `_archive/`：历史云端训练脚本、旧部署脚本、数据准备脚本及原方案文档归档
+缺少权重时可浏览门户。补齐依赖和权重后，`/readyz` 返回 `{"ready":true}` 即可进行图像筛查。
+
+## 恢复模型与演示素材
+
+- 按 [模型权重索引.json](模型权重索引.json) 的目标相对路径放置既有权重，并核对 SHA-256。核心视觉权重由 [portable/models.json](portable/models.json) 指定。模型 5 和模型 6 使用 `02_模型训练与评估/` 内保留的锁定 JSON，权重和预训练文件需按索引恢复。
+- 四类病灶分割权重位于 `inference_runtime/lesion_localization/model.safetensors`。
+- 如需使用项目预置演示，从原始部署资料恢复 `examples/IDRiD_03.jpg` 与 `inference/reference_cases/idrid_03/masks.png`。另一个演示图位于 `inference_runtime/local_gpu/retina_public_sample_proxy.jpg`。公开样例的来源和许可见 [examples/IDRiD-LICENSE.txt](examples/IDRiD-LICENSE.txt)。
+
+## 启用报告解读
+
+**华为 MaaS DeepSeek**。在启动服务的 PowerShell 中设置 `MAAS_API_KEY`。本机解读入口使用回环地址，`RETINA_PUBLIC_ORIGIN` 留空。
+
+```powershell
+$key = Read-Host '华为 MaaS API Key' -AsSecureString
+$env:MAAS_API_KEY = [System.Net.NetworkCredential]::new('', $key).Password
+$key.Dispose()
+$env:RETINA_PUBLIC_ORIGIN = $null
+
+.\.venv\Scripts\python.exe portable/run.py serve --device cpu --host 127.0.0.1 --port 8766 --maas-llm
+```
+
+在医生端生成或打开报告，点击 **生成解读**。视觉推理在本机完成，MaaS 根据报告的结构化要点生成文字分析，这一步需要联网。
+
+**本地 Qwen**。将本地运行时和模型放入 `inference_runtime/local_llm/`，包括 `llama.cpp/llama-server.exe` 及其配套文件、`qwen2.5-1.5b-ollama.gguf`。使用 `--local-llm` 启动，默认模型端口为 `8091`。
+
+## AgentArts／Dify 工作流
+
+`agent/dify_workflows/` 提供医患端导入模板。使用自己的 HTTPS 服务地址生成一份导入包：
+
+```powershell
+.\.venv\Scripts\python.exe agent/export_dify_workflows.py --origin https://retina.example.com --output output/dify_workflows
+```
+
+导出的工作流默认使用 API 密钥占位符。导入后在部署环境配置对应的 API Key。更多接口与编排说明见 [多智能体编排与受众扩展指南](agent/多智能体编排与受众扩展指南.md)。
+
+## 目录与测试
+
+| 目录 | 内容 |
+| --- | --- |
+| `inference/` | API、视觉推理、分诊规则、医患门户及报告 |
+| `portable/` | 依赖安装、模型索引与本机启动入口 |
+| `agent/`、`knowledge_base/` | 工作流、接口契约、提示词及知识库 |
+| `configs/`、`training/`、`scripts/` | 模型配置、训练与评估代码 |
+| `02_模型训练与评估/` | 推理所需的锁定配置和选择记录 |
+| `tests/` | 推理、报告、工作流及 API 测试 |
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install "httpx>=0.27,<1" "PyYAML>=6,<7"
+.\.venv\Scripts\python.exe -m unittest discover -s tests
+```
+
+测试使用临时生成的合成图像与模拟推理。架构和接口定义见 [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md)。

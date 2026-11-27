@@ -1,23 +1,61 @@
-# Python & environments
+# Python environments and build outputs
 __pycache__/
 *.py[cod]
-.venv/
-.inference-gpu-venv/
+.pytest_cache/
+.mypy_cache/
+.venv*/
+.inference*-venv/
+build/
+dist/
+*.egg-info/
 
-# Runtime state, local outputs & secrets
-output/
-agent/agent_ready*/
-inference_runtime/*.dpapi
-inference_runtime/*.sqlite3*
-inference_runtime/hospital_storage/
-inference_runtime/local_gpu/server_process.json
-inference_runtime/local_gpu/server.*.log
-inference_runtime/local_gpu/tunnel-state.json
-inference_runtime/local_gpu/tunnel_logs/
-inference_runtime/local_gpu/tools/
+# Local configuration and credentials
+.env
+.env.*
+*.dpapi
+*.key
+*.pem
+*.pfx
+*.p12
 
-# Large model weights & binary vendor wheels (fingerprints tracked in 模型权重索引.json & 主包清单.json)
+# Model weights, executables and packages
 *.pt
 *.pth
 *.safetensors
-inference_runtime/lesion_localization/vendor/
+*.gguf
+*.ckpt
+*.bin
+*.onnx
+*.tflite
+*.h5
+*.npz
+*.exe
+*.dll
+*.whl
+*.zip
+/weights/
+/checkpoints/
+/cloud_upload/
+
+# Demo media, patient stores and generated exports
+/agent/agent_ready*/
+/output/
+/runs/
+/data/
+/inference_runtime/
+/examples/*.jpg
+/examples/*.jpeg
+/examples/*.png
+/inference/reference_cases/*/*.png
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.log
+
+# Editors and desktop files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

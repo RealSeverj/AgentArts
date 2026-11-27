@@ -13,6 +13,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from inference.clinical_referral import build_clinical_decision
 from inference.report_summary import ELEVEN_LABELS, FIVE_LABELS, LABELS
 
 URGENT_SYMPTOM_RULES = (
@@ -168,7 +169,8 @@ def _extract_predictions(screening: dict[str, Any]) -> tuple[list[dict[str, Any]
     )
 
     for source_model, stage, report_group, expected_codes in groups:
-        item_map = {item.get("code"): item for item in (report_group.get("items") or []) if item.get("code")}
+        comparable_items = report_group.get("items") if report_group.get("status") == "completed" else []
+        item_map = {item.get("code"): item for item in (comparable_items or []) if item.get("code")}
         scores = ((stage.get("output") or {}).get("scores") or {}) if stage.get("status") == "completed" else {}
         for code in expected_codes:
             item = item_map.get(code) or {}
@@ -202,8 +204,8 @@ def _extract_predictions(screening: dict[str, Any]) -> tuple[list[dict[str, Any]
 
 def evaluate_care_rules(screening: dict[str, Any], intake: dict[str, Any]) -> dict[str, Any]:
     """Deterministically compute care priority, missing facts, and follow-up actions."""
-    symptoms = list(intake.get("symptoms") or [])
-    history = list(intake.get("history") or [])
+    symptoms = _coerce_str_list(intake.get("symptoms"))
+    history = _coerce_str_list(intake.get("history"))
     eye = intake.get("eye") or "unknown"
     confirmed_plan = intake.get("confirmed_plan")
 
@@ -215,6 +217,11 @@ def evaluate_care_rules(screening: dict[str, Any], intake: dict[str, Any]) -> di
         screening.get("status") in ("ok", "partial")
         and quality_stage.get("status") == "completed"
         and quality_label in ("Good", "Usable")
+    )
+    decision = build_clinical_decision(screening, predictions, dr_grade, quality_ok=quality_ok, urgent_hits=urgent_hits)
+    followup_time = decision["timeframe"]
+    priority_basis = " ".join(
+        f"{item['name']}：{item['evidence']}{item['basis']}" for item in decision["trigger_items"]
     )
 
     missing_facts: list[str] = []
@@ -236,9 +243,6 @@ def evaluate_care_rules(screening: dict[str, Any], intake: dict[str, Any]) -> di
 
     questions_to_confirm = candidate_questions[:2]
 
-    actions: list[str] = []
-    monitoring_items: list[str] = []
-    questions_for_clinician: list[str] = []
     source_ids: list[str] = []
 
     def _add_sources(*codes: str):
@@ -246,136 +250,62 @@ def evaluate_care_rules(screening: dict[str, Any], intake: dict[str, Any]) -> di
             if c and c not in source_ids:
                 source_ids.append(c)
 
-    if urgent_hits:
+    if decision["status"] == "emergency":
         care_priority = "urgent_ophthalmology"
         priority_label = "立即眼科急诊评估"
-        followup_time = "立即（当日尽快前往眼科急诊或眼底专科就诊）"
         rule_ids = ["RULE_URGENT_SYMPTOM_01"]
         _add_sources("SRC_NEI_RD_URGENT")
-        priority_basis = (
-            "已触发紧急症状优先规则：" + "；".join(urgent_hits) + "。"
-            "无论当前眼底照片是否检出异常或是否完成分析，警示症状均需优先急诊排查视网膜裂孔、视网膜脱离或急性眼底出血。"
-        )
         actions = [
-            "请立即前往具备眼底检查条件的眼科急诊，避免剧烈运动与揉眼。",
-            "就诊时携带本次眼底原图及完整症状起始时间，告知医生上述警示症状。",
+            "请立即前往具备眼底检查条件的眼科急诊。",
+            "就诊时请告知医生症状起始时间、眼别及近期变化，随身携带可取得的眼底资料。",
         ]
-        monitoring_items = ["视野遮挡范围是否扩大", "飞蚊或闪光感是否持续加重", "单眼视力是否进一步下降"]
-        questions_for_clinician = [
-            "是否需要散瞳详细检查周边视网膜及眼底 B 超以排除视网膜裂孔或脱离？",
-            "目前症状是否需要急诊干预或限制日常活动？",
-        ]
-    elif not quality_ok:
+        monitoring_items = ["视野遮挡范围是否扩大", "飞蚊或闪光感是否加重", "单眼视力是否进一步下降"]
+        questions_for_clinician = ["是否需要散瞳检查周边视网膜或行眼部 B 超？"]
+    elif decision["status"] == "image_ungradable":
         care_priority = "retake_image"
-        priority_label = "图像质量不足，建议重拍"
-        followup_time = "重新采集清晰眼底照片后再次分析；若有不适随时就诊"
+        priority_label = "图像可判读性不足，建议重拍或人工复核"
         rule_ids = ["RULE_QC_RETAKE_01"]
         _add_sources("SRC_QC_RETAKE")
-        priority_basis = (
-            f"当前图像状态为 {screening.get('status')}（质控判定：{quality_label or '未完成'}），"
-            "未达到可靠判读条件，未对下游疾病做阴性或正常结论。"
-        )
-        actions = [
-            "请在暗室或充分对焦条件下重新拍摄眼底彩色照，避免反光、严重模糊或视野遮挡。",
-            "如重拍仍受限或伴有视物不适，请直接由眼科医生裂隙灯或散瞳检查确认。",
-        ]
+        priority_basis = f"图像质控判定为 {quality_label or '未完成'}，当前图像无法用于转诊分级。"
+        actions = ["重新采集清晰眼底彩照，或由眼科医生通过散瞳等检查评估。"]
         monitoring_items = ["是否新发视力下降、黑影飘动或视物变形"]
-        questions_for_clinician = ["是否需要散瞳拍摄眼底照或行 OCT 检查评估眼底情况？"]
-    elif (dr_grade is not None and dr_grade >= 3) or bool({"RVO", "ODE"} & reached_codes):
-        care_priority = "prompt_ophthalmology"
-        priority_label = "尽快眼科眼底专科就诊"
-        followup_time = "建议 1~2 周内眼科眼底专科就诊（若有既有医嘱则以医嘱为准）"
-        rule_ids = ["RULE_DR_SEVERE_OR_VASC_01"]
-        _add_sources("SRC_DR_GUIDELINE_2024", "SRC_RVO_ODE_CONSENSUS")
-        triggers = []
-        if dr_grade is not None and dr_grade >= 3:
-            triggers.append(f"糖网专病模型预测为 {dr_grade} 级（{'重度非增殖期' if dr_grade == 3 else '增殖期'}）")
-        if "RVO" in reached_codes:
-            triggers.append("十一标签模型提示视网膜静脉阻塞（RVO）达到研究筛查线")
-        if "ODE" in reached_codes:
-            triggers.append("十一标签模型提示视盘水肿（ODE）达到研究筛查线")
-        priority_basis = "；".join(triggers) + "。高风险或血管/视盘急性体征线索需由专科医生尽快面诊复核。"
-        actions = [
-            "预约 1~2 周内眼科眼底专科门诊，核对原图与病灶候选区。",
-            "就诊时建议携带既往血糖记录、血压记录及既往眼底检查/光凝病历。",
-        ]
-        monitoring_items = ["单眼视力是否突然变模糊", "视物是否出现直线弯曲变形", "是否伴随眼胀、头痛或突发黑影"]
-        questions_for_clinician = [
-            "是否需要进一步行黄斑 OCT 或眼底荧光素血管造影（FFA）以明确病变范围？",
-            "目前是否需要激光光凝、抗 VEGF 或其他专科干预，以及后续复查间隔？",
-        ]
-    elif dr_grade == 2 or bool({"AMD", "CSR", "glaucoma", "ODP", "OPTIC_DISC_CUPPING"} & reached_codes):
-        care_priority = "scheduled_ophthalmology"
-        priority_label = "限期眼科专科复核"
-        followup_time = "建议 1 个月内前往眼科门诊复核"
-        rule_ids = ["RULE_MODERATE_OR_SPECIALIST_02"]
-        triggers = []
-        if dr_grade == 2:
-            triggers.append("糖网专病模型预测为 2 级（中度非增殖期）")
-            _add_sources("SRC_DR_GUIDELINE_2024")
-        if {"AMD", "CSR"} & reached_codes:
-            triggers.append("黄斑区相关筛查项（" + "、".join(sorted({"AMD", "CSR"} & reached_codes)) + "）达到研究筛查线")
-            _add_sources("SRC_DICT_DN_AMD", "SRC_DICT_MACULA")
-        if {"glaucoma", "ODP", "OPTIC_DISC_CUPPING"} & reached_codes:
-            triggers.append("视盘与青光眼线索（" + "、".join(sorted({"glaucoma", "ODP", "OPTIC_DISC_CUPPING"} & reached_codes)) + "）达到研究筛查线")
-            _add_sources("SRC_DICT_ODC_GLAUCOMA", "SRC_GLAUCOMA_SCREEN_2024")
-        priority_basis = "；".join(triggers) + "。需由眼科医生结合临床体征及专科检查进行明确诊断。"
-        actions = ["建议 1 个月内至眼科门诊就诊，由医生结合原图复核相应眼底区域。"]
-        if {"glaucoma", "ODP", "OPTIC_DISC_CUPPING"} & reached_codes:
-            actions.append("若提示视盘凹陷/苍白或青光眼风险线索，建议完善眼压测量、视野检查及视神经纤维层 OCT。")
-        if {"AMD", "CSR"} & reached_codes:
-            actions.append("若提示黄斑异常线索，建议完善黄斑 OCT 排查积液或结构改变。")
-        monitoring_items = ["中心视力是否下降或看字变模糊", "单眼交替遮盖看门框直线是否扭曲", "视野周边是否出现缺损"]
-        questions_for_clinician = [
-            "结合本次眼底照片，是否需要补充黄斑 OCT、眼压或视野检查？",
-            "下一步建议多久复查一次？",
-        ]
-    elif dr_grade == 1 or bool({"DN", "MYOPIC_FUNDUS", "TSLN", "LS", "ABNORMAL", "DR"} & reached_codes):
-        care_priority = "routine_followup"
-        priority_label = "常规眼科随访与病史核对"
-        followup_time = "建议 3~6 个月常规眼科复查（若存在明确临床诊断请遵医嘱）"
-        rule_ids = ["RULE_MILD_OR_PHENOTYPE_03"]
-        _add_sources("SRC_DR_GUIDELINE_2024", "SRC_DICT_LS", "SRC_DICT_MYOPIA")
-        triggers = []
-        if dr_grade == 1 or "DR" in reached_codes:
-            triggers.append("存在轻度糖网分级或 DR 筛查提示")
-        if "LS" in reached_codes:
-            triggers.append("提示激光瘢痕（LS）治疗痕迹特征")
-        if {"DN", "MYOPIC_FUNDUS", "TSLN"} & reached_codes:
-            triggers.append("提示眼底影像表型（" + "、".join(sorted({"DN", "MYOPIC_FUNDUS", "TSLN"} & reached_codes)) + "）")
-        if not triggers and "ABNORMAL" in reached_codes:
-            triggers.append("总体异常标签（ABNORMAL）达到研究筛查线")
-        priority_basis = "；".join(triggers) + "。建议结合既往诊治与病史常规随访。"
-        actions = ["建议 3~6 个月到眼科常规随访，同时控制血糖、血压与血脂等全身危险因素。"]
-        if "LS" in reached_codes:
-            actions.append("激光瘢痕（LS）通常对应既往光凝治疗痕迹而非新发疾病，请核对既往眼底激光治疗病历。")
-        monitoring_items = ["常规关注视力清晰度变化", "高度近视或既往光凝患者注意有无新发黑影或闪光感"]
-        questions_for_clinician = ["本次发现属于既往稳定改变还是需要补充检查？建议多久复查？"]
+        questions_for_clinician = ["是否需要散瞳拍照或补充 OCT 检查？"]
     else:
-        care_priority = "annual_screening"
-        priority_label = "定期常规眼健康随访"
-        followup_time = "一般人群建议每 1 年检查一次眼底；糖尿病或高度近视人群建议每 6~12 个月复查"
-        rule_ids = ["RULE_ROUTINE_ANNUAL_04"]
-        _add_sources("SRC_SCREEN_SCOPE")
-        priority_basis = (
-            "本模型覆盖范围内未检出糖网 1~4 级或达到研究筛查线的异常特征。"
-            "需注意模型未覆盖周边视网膜裂孔及全部眼科疾病，不能替代完整临床眼科检查。"
-        )
-        actions = [
-            "保持健康用眼与全身代谢指标管理，按建议周期定期复查眼底。",
-            "如后续出现视力变化或新发不适症状，请及时线下就医。",
-        ]
-        monitoring_items = ["日常双眼中远近视力变化", "有无新发飞蚊、闪光或视物变形"]
-        questions_for_clinician = ["结合本人基础病史，下一次常规眼科随访建议安排在什么时候？"]
-
-    if confirmed_plan:
+        level = decision["level"]
+        care_priority, priority_label, rule_id = {
+            "L4": ("prompt_ophthalmology", "尽快安排专科评估", "RULE_DR_SEVERE_OR_VASC_01"),
+            "L3": ("scheduled_ophthalmology", "限期眼科专科复核", "RULE_MODERATE_OR_SPECIALIST_02"),
+            "L2": ("routine_followup", "常规眼科随访与病史核对", "RULE_MILD_OR_PHENOTYPE_03"),
+            "L1": ("annual_screening", "定期常规眼健康随访", "RULE_ROUTINE_ANNUAL_04"),
+            None: ("scheduled_ophthalmology", "完成专科复核后再分级", "RULE_SCREEN_REVIEW_REQUIRED_01"),
+        }[level]
+        rule_ids = [rule_id]
+        actions = [f"{decision['destination']} · {followup_time}。"]
+        for item in decision["trigger_items"]:
+            code = item["code"]
+            if code.startswith("DR"):
+                _add_sources(LABEL_SOURCES["DR"])
+            else:
+                _add_sources(LABEL_SOURCES.get(code))
+            if item["level"] == level and item["tests"]:
+                actions.append(f"{item['name']}建议由医生结合情况安排" + "、".join(item["tests"]) + "。")
+            if code in {"ODE", "AMD"}:
+                actions.append(item["basis"])
+        if level is None or level == "L1":
+            _add_sources("SRC_SCREEN_SCOPE")
+        monitoring_items = ["视力变化", "新发飞蚊、闪光、视物变形或遮挡"]
+        questions_for_clinician = ["结合原图和临床资料，是否需要补充检查或调整复查时间？"]
+    if confirmed_plan and decision["level"] in {"L1", "L2", "L3"}:
         actions.insert(0, f"已记录医生既往安排：{confirmed_plan}（如无新发急症表现，复查节奏请优先遵照既定医嘱）。")
-        if not urgent_hits:
-            followup_time = f"优先沿用已确认医生安排：{confirmed_plan}；参考周期：{followup_time}"
+        followup_time = f"优先沿用已确认医生安排：{confirmed_plan}；参考周期：{followup_time}"
 
-    plan_status = "urgent_action_required" if urgent_hits else ("needs_confirmation" if missing_facts else "ready")
+    if urgent_hits:
+        plan_status = "urgent_action_required"
+    else:
+        plan_status = "needs_confirmation" if missing_facts or decision["level"] is None else "ready"
 
     return {
+        "clinical_decision": decision,
         "care_priority": care_priority,
         "priority_label": priority_label,
         "priority_basis": priority_basis,
@@ -453,6 +383,7 @@ def build_evidence_packet(
         "intake": deepcopy(intake),
         "care_priority": care["care_priority"],
         "priority_label": care["priority_label"],
+        "clinical_decision": deepcopy(care["clinical_decision"]),
         "rule_ids": care["rule_ids"],
         "source_ids": care["references"],
         "missing_facts": care["missing_facts"],
@@ -642,6 +573,7 @@ class ClinicalWorkflowStore:
                 "status": evidence.get("status"),
                 "dr_grading": evidence.get("dr_grading"),
                 "care_priority": evidence.get("care_priority"),
+                "clinical_decision": evidence.get("clinical_decision"),
                 "missing_facts": evidence.get("missing_facts"),
                 "visual_report": evidence.get("visual_report"),
                 "clinical_review": evidence.get("clinical_review"),
@@ -724,6 +656,7 @@ class ClinicalWorkflowStore:
                 "care_preview": {
                     "care_priority": care["care_priority"],
                     "priority_label": care["priority_label"],
+                    "clinical_decision": care["clinical_decision"],
                     "urgent_symptoms_detected": care["urgent_symptoms_detected"],
                     "missing_facts": care["missing_facts"],
                 },

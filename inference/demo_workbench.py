@@ -443,6 +443,7 @@ def run_demo_workflow(
             "eye_label": EYE_LABELS.get(evidence.get("eye") or "unknown", "眼别待确认"),
             "quality_label": (evidence.get("quality") or {}).get("predicted_label"),
             "dr_grading": evidence.get("dr_grading"),
+            "clinical_decision": care_plan["clinical_decision"],
             "care_priority": care_plan["care_priority"],
             "priority_label": care_plan["priority_label"],
             "followup_time": care_plan["followup_time"],
@@ -1086,7 +1087,8 @@ def render_demo_workbench_html(*, ready: bool) -> str:
         data.care_priority === "urgent_ophthalmology" ? "urgent" :
         (data.care_priority === "annual_screening" ? "ok" : "warn")
       );
-      el("heroTitle").textContent = data.priority_label;
+      const level = data.clinical_decision && data.clinical_decision.level;
+      el("heroTitle").textContent = level ? level + " · " + data.priority_label : data.priority_label;
       el("heroSub").textContent = "建议时间窗：" + data.followup_time;
 
       const repWrap = el("reportBtnWrap");

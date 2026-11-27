@@ -29,12 +29,19 @@ from inference.clinical_workflow import (
 from inference.image_io import InputImageError, URLFetchPolicy, decode_image_bytes
 from inference.report_summary import DR_LEVELS, LABELS
 from inference.schemas import FundusResponse
-from inference.visual_report import ANATOMY, LESIONS, _comparison, _score_rows
+from inference.visual_report import _comparison, _image_readable, _quality_blocked_info, _report_html
 
 ROOT = Path(__file__).resolve().parents[1]
 PHONE_RE = re.compile(r"(?<!\d)(1[3-9]\d{9})(?!\d)")
 EYE_CN = {"left": "左眼", "right": "右眼"}
 EYE_MEDICAL = {"left": "左眼（OS）", "right": "右眼（OD）"}
+CARE_LEVEL_STYLE = """
+  .care-level{display:inline-block;border-radius:6px;padding:1px 8px;font-weight:700;white-space:nowrap;background:#e2e8f0;color:#334155}
+  .care-level-l4{background:#fee2e2;color:#991b1b}
+  .care-level-l3{background:#ffedd5;color:#9a3412}
+  .care-level-l2{background:#fef3c7;color:#854d0e}
+  .care-level-l1{background:#dcfce7;color:#166534}
+"""
 
 
 class PatientUpsertRequest(BaseModel):
@@ -109,10 +116,30 @@ def _friendly_labels(codes: list[str]) -> list[str]:
         "ODP": "视神经颜色偏淡信号",
         "MYOPIC_FUNDUS": "近视相关的眼底底色表现",
         "TSLN": "常见的豹纹状眼底纹理（多见于近视或中老年）",
-        "LS": "过去做过眼底激光治疗留下的保护性印记",
+        "LS": "可能是既往眼底激光治疗留下的痕迹",
         "ABNORMAL": "眼底整体影像信号提示需要医生复核",
     }
     return [friendly.get(c, LABELS.get(c, (c,))[0]) for c in codes]
+
+
+def _evaluate_report_care(screening: dict[str, Any], patient: dict[str, Any], eye: str) -> dict[str, Any]:
+    history = _coerce_str_list(f"{patient.get('chronic_history', '')} {patient.get('eye_history', '')}")
+    return evaluate_care_rules(screening, {"eye": eye, "symptoms": [], "history": history})
+
+
+def _read_report_care(row: sqlite3.Row, patient: dict[str, Any], screening: dict[str, Any] | None = None) -> dict[str, Any]:
+    care = json.loads(row["care_plan_json"])
+    if "clinical_decision" in care:
+        return care
+    if screening is None:
+        screening = json.loads(row["screening_json"])
+    return _evaluate_report_care(screening, patient, row["eye"])
+
+
+def _decision_badge(level: str | None) -> str:
+    if level in {"L1", "L2", "L3", "L4"}:
+        return f'<span class="care-level care-level-{level.lower()}">{level}</span>'
+    return ""
 
 
 def _seed_baseline_screening(dr_grade: int, *, status_label: str = "Good") -> dict[str, Any]:
@@ -468,11 +495,12 @@ class HospitalSystemStore:
                 "SELECT * FROM his_images WHERE phone = ? ORDER BY captured_utc DESC", (phone,)
             ).fetchall()
             reps = conn.execute(
-                "SELECT report_id, image_id, eye, analyzed_utc, dr_grade, care_priority, has_overlay "
-                "FROM his_reports WHERE phone = ? ORDER BY analyzed_utc DESC",
+                "SELECT report_id, image_id, eye, analyzed_utc, dr_grade, care_priority, has_overlay, care_plan_json, "
+                "screening_json FROM his_reports WHERE phone = ? ORDER BY analyzed_utc DESC",
                 (phone,),
             ).fetchall()
 
+        patient = dict(p)
         image_list = []
         for im in imgs:
             item = dict(im)
@@ -483,11 +511,16 @@ class HospitalSystemStore:
         report_list = []
         for rp in reps:
             d = dict(rp)
+            care = _read_report_care(rp, patient)
+            del d["screening_json"], d["care_plan_json"]
+            decision = care.get("clinical_decision") or {}
+            d.update(care_priority=care["care_priority"], clinical_level=decision.get("level"),
+                     clinical_title=decision.get("title"))
             d.update(self._report_urls(rp["report_id"], bool(rp["has_overlay"])))
             report_list.append(d)
 
         return {
-            "patient": dict(p),
+            "patient": patient,
             "images": image_list,
             "reports": report_list,
             "pending_eyes": sorted({im["eye"] for im in imgs if im["status"] == "pending"}),
@@ -626,7 +659,10 @@ class HospitalSystemStore:
             rep_dir = self.reports_dir / report_id
             rep_dir.mkdir(parents=True, exist_ok=True)
             rgb.save(rep_dir / "original.jpg", format="JPEG", quality=95, subsampling=0)
-            overlay, comp_info = _comparison(rgb, screening, latest_img["image_sha256"])
+            if _image_readable(screening):
+                overlay, comp_info = _comparison(rgb, screening, latest_img["image_sha256"])
+            else:
+                overlay, comp_info = None, _quality_blocked_info()
             has_overlay = overlay is not None
             if overlay is not None:
                 overlay.save(rep_dir / "overlay.jpg", format="JPEG", quality=95, subsampling=0)
@@ -639,11 +675,7 @@ class HospitalSystemStore:
                     screening, screening.get("visual_report")
                 )
 
-        history_list = _coerce_str_list(f"{overview['patient']['chronic_history']} {overview['patient']['eye_history']}")
-        care_plan = evaluate_care_rules(
-            screening,
-            {"eye": chosen_eye, "symptoms": [], "history": history_list},
-        )
+        care_plan = _evaluate_report_care(screening, overview["patient"], chosen_eye)
         dr_grade = ((screening.get("report_summary") or {}).get("dr_severity") or {}).get("grade")
 
         with self._lock:
@@ -697,7 +729,9 @@ class HospitalSystemStore:
         data = dict(row)
         data["patient"] = dict(p) if p else {}
         data["screening"] = json.loads(data.pop("screening_json"))
-        data["care_plan"] = json.loads(data.pop("care_plan_json"))
+        data["care_plan"] = _read_report_care(row, data["patient"], data["screening"])
+        del data["care_plan_json"]
+        data["care_priority"] = data["care_plan"]["care_priority"]
         comp_raw = data.pop("comparison_json")
         data["comparison"] = json.loads(comp_raw) if comp_raw else None
         data["urls"] = self._report_urls(report_id, bool(data["has_overlay"]))
@@ -727,43 +761,46 @@ class HospitalSystemStore:
         comp = rep.get("comparison")
         url = rep["urls"]["patient_report_url"]
         _, reached, dr_grade = _extract_predictions(scr)
-        quality_label = (((scr.get("results") or {}).get("quality") or {}).get("output") or {}).get("predicted_label")
+        decision = care.get("clinical_decision") or {}
+        level = decision.get("level")
+        plan = " · ".join(filter(None, (decision.get("destination"), care["followup_time"])))
 
         if result.get("has_new_image"):
             opener = f"{name}您好，发现医院刚刚上传了您{eye_cn}的最新检查照片，我已经帮您仔细分析好啦！"
         else:
             opener = f"{name}您好，医院暂时还没有上传新的{eye_cn}照片，我帮您调出了最近一次的检查报告："
 
-        if quality_label == "Reject":
+        if care["care_priority"] == "urgent_ophthalmology":
+            body = "您描述的症状需要立即评估，请现在前往眼科急诊。"
+        elif care["care_priority"] == "retake_image":
             body = (
-                f"不过这张{eye_cn}照片拍摄得有点模糊或反光，暂时没法看得特别清楚。建议您下次复查时请技师帮您重新拍一张清晰的眼底照。"
+                f"这张{eye_cn}照片暂时无法可靠判读，建议请拍片技师帮您重新拍一张清晰的眼底照。"
             )
-        elif dr_grade == 0 and not (reached - {"TSLN", "LS"}):
-            extra = ""
-            if "TSLN" in reached:
-                extra = "另外照片里有一点常见的“豹纹状眼底”纹理，近视或者中老年人很常见，不算严重眼病，不需要紧张。"
-            if "LS" in reached:
-                extra += "同时能看到过去做过激光留下的稳定印记。"
+        elif level == "L1":
             body = (
-                f"这次分析的是您的{eye_cn}，很高兴能告诉您：检查没有发现明显的糖尿病视网膜病变，"
-                f"其他重点眼底筛查方向上也都很平稳，您可以放宽心！{extra}"
-                "平时保持规律用眼和稳定作息，按常规每年复查一次眼睛就可以啦。"
+                f"这次{eye_cn}筛查没有发现明显的糖尿病视网膜病变，各项筛查指标均未达线。"
+                f"建议安排 **{plan}**。"
             )
-        elif care["care_priority"] in {"urgent_ophthalmology", "prompt_ophthalmology", "scheduled_ophthalmology"}:
-            concerns = "、".join(_friendly_labels(sorted(reached))) if reached else "视网膜微血管变化"
+        elif level in {"L3", "L4"}:
+            next_step = "请尽快联系专科安排评估" if level == "L4" else "请预约眼科专科复核"
             body = (
-                f"这次分析的是您的{eye_cn}，机器帮我们发现了一些需要留意的迹象（主要集中在{concerns}）。"
-                f"为了稳妥起见，建议您在 **{care['followup_time']}** 到医院眼科让大夫仔细面诊看一眼，顺便带上这份解读单方便医生参考。"
+                f"这次{eye_cn}检查有需要眼科医生复核的线索。"
+                f"{next_step}。建议安排 **{plan}**，就诊时请带上这份解读单。"
             )
+        elif level == "L2":
+            findings = _friendly_labels(sorted(reached - {"ABNORMAL"}))
+            if dr_grade == 1 and "DR" not in reached:
+                findings.insert(0, "轻度糖尿病相关的眼底变化线索")
+            detail = "、".join(findings) or "轻度眼底变化线索"
+            body = f"这次{eye_cn}检查提示{detail}。建议安排 **{plan}**。"
         else:
-            concerns = "、".join(_friendly_labels(sorted(reached))) if reached else "轻度眼底改变"
-            body = (
-                f"这次分析的是您的{eye_cn}，整体情况还算平稳，发现有一点轻微提示（{concerns}），"
-                f"目前不算紧急问题，建议您在 {care['followup_time']} 常规去眼科复查随访就好。"
-            )
+            detail = "已完成的糖网分级没有发现明显的糖尿病视网膜病变。" if dr_grade == 0 and "DR" not in reached else ""
+            body = f"{detail}本次{eye_cn}筛查仍需补充评估。建议安排 **{plan}**。"
 
         comp_text = f"\n\n{comp['patient_note']}" if comp else ""
-        return f"{opener}\n\n{body}{comp_text}\n\n您的个人解读报告在这里（页面支持一键保存 PDF）：\n[打开您的{eye_cn}专属健康报告]({url})"
+        safety_note = decision.get("safety_note") if level in {"L3", "L4"} else None
+        safety_text = f"\n\n{safety_note}" if safety_note else ""
+        return f"{opener}\n\n{body}{safety_text}{comp_text}\n\n您的个人解读报告在这里（页面支持一键保存 PDF）：\n[打开您的{eye_cn}专属健康报告]({url})"
 
     def build_doctor_reply(self, result: dict[str, Any]) -> str:
         patient = result["patient"]
@@ -777,17 +814,23 @@ class HospitalSystemStore:
         url = rep["urls"]["doctor_report_url"]
         _, reached, dr_grade = _extract_predictions(scr)
         review = (scr.get("report_summary") or {}).get("clinical_review") or {}
+        decision = care.get("clinical_decision") or {}
+        decision_title = " · ".join(filter(None, (decision.get("level"), decision.get("title") or care["priority_label"])))
+        triggers = "、".join(item["name"] for item in decision.get("trigger_items", []))
         lesion_legend = ((scr.get("visual_report") or {}).get("legend") or [])
         lesion_str = "、".join(item["name"] for item in lesion_legend if item.get("name")) or "未见显著四类病灶候选区"
-        reached_str = "、".join(f"{LABELS.get(c, (c,))[0]}({c})" for c in sorted(reached)) or "其余研究筛查项均低于工作阈值"
+        reached_str = "、".join(f"{LABELS.get(c, (c,))[0]}({c})" for c in sorted(reached)) or "暂无达到研究筛查线的记录"
         prefix = "已完成院内新同步影像实时分析" if result.get("has_new_image") else "已为您调阅最新归档临床辅助报告"
         comp_line = f"\n- **同眼纵向对照**：{comp['doctor_note']}" if comp else ""
+        trigger_line = f"\n- **转诊触发项**：{triggers}" if triggers else ""
+        references = "、".join(care.get("references") or [])
+        reference_line = f"\n- **参考依据**：{references}" if references else ""
         return (
             f"{prefix}：**{patient['name']}**（{patient['age']}岁，{patient['chronic_history'] or '未记特殊慢病'}）— {eye_cn}\n"
             f"- **辅助分期与筛查结论**：DR {dr_grade if dr_grade is not None else '--'} 级；{review.get('primary', '')}\n"
             f"- **达到研究筛查线项目**：{reached_str}\n"
             f"- **四类病灶定位**：{lesion_str}\n"
-            f"- **专科决策与复核建议**：{care['priority_label']}（{care['followup_time']}）。参考规则：{', '.join(care.get('rule_ids') or [])}；参考依据：{', '.join(care.get('references') or [])}。{comp_line}\n\n"
+            f"- **专科决策与复核建议**：{decision_title}（{care['followup_time']}）。{trigger_line}{reference_line}{comp_line}\n\n"
             f"临床辅助诊断与病灶分析报告（支持导出 A4 PDF）：\n[打开{patient['name']}{eye_cn}临床辅助报告]({url})"
         )
 
@@ -800,27 +843,48 @@ class HospitalSystemStore:
         care = rep["care_plan"]
         comp = rep.get("comparison")
         eye_cn = EYE_CN.get(rep["eye"], "眼底")
-        _, reached, dr_grade = _extract_predictions(scr)
+        _, reached, _ = _extract_predictions(scr)
+        decision = care.get("clinical_decision") or {}
+        level = decision.get("level")
+        destination = decision.get("destination") or ""
+        destination_html = f"<p><strong>建议去向</strong> {escape(destination)}</p>" if destination else ""
+        safety_note = decision.get("safety_note") or ""
 
-        if dr_grade == 0 and not (reached - {"TSLN", "LS"}):
+        if care["care_priority"] == "urgent_ophthalmology":
+            headline = "请立即前往眼科急诊"
+            tone_cls = "tone-urgent"
+            comfort = "请告知医生症状开始的时间和受影响的眼睛。"
+        elif care["care_priority"] == "retake_image":
+            headline = "照片需要重拍或由医生确认"
+            tone_cls = "tone-info"
+            comfort = "目前这张照片无法可靠判读。请按建议补充清晰的眼底照。"
+        elif level == "L1":
             headline = "目前这只眼未见明显糖网病变，整体状态平稳"
             tone_cls = "tone-ok"
-            comfort = "高兴地告诉您，模型对这张照片进行了全面筛查后，没有发现明显的糖尿病视网膜病变，多个主要风险方向也都很稳定，您可以放宽心。"
-        elif care["care_priority"] in {"urgent_ophthalmology", "prompt_ophthalmology", "scheduled_ophthalmology"}:
-            headline = "发现了一些需要请眼科医生看一看的变化"
-            tone_cls = "tone-warn"
-            comfort = "照片中提示有几处值得关注的特征变化（如微血管或黄斑区提示）。AI 筛查不能代替医生面诊，建议您带着这份解读单按建议时间到眼科门诊复核一下。"
+            comfort = "本次各项筛查指标均未达线，请按建议安排年度眼科检查。"
+        elif level in {"L3", "L4"}:
+            headline = "请尽快联系专科安排评估" if level == "L4" else "请预约眼科医生复核"
+            tone_cls = "tone-urgent" if level == "L4" else "tone-warn"
+            comfort = "请携带这份解读单和既往眼科检查资料，由医生结合面诊评估。"
+        elif level == "L2":
+            headline = "眼底变化建议按期复查"
+            tone_cls = "tone-mild"
+            comfort = "本次筛查有轻度眼底变化线索，请按建议时间复查。"
         else:
-            headline = "整体表现较为平稳，按常规周期护眼复查即可"
+            headline = "本次筛查仍需补充评估"
             tone_cls = "tone-info"
-            comfort = "照片中没有紧急危险信号，仅有一些轻微或常见的眼底纹理变化。平时注意规律作息与血糖血压管理，定期复查就好。"
+            comfort = "请按下方建议补充检查，由眼科医生结合完整结果评估。"
 
-        friendly_list = _friendly_labels(sorted(reached))
-        findings_html = (
-            "<ul>" + "".join(f"<li>{escape(item)}</li>" for item in friendly_list) + "</ul>"
-            if friendly_list
-            else "<p>各项重点筛查方向均未见明显异常信号，您可以安心。</p>"
-        )
+        friendly_list = _friendly_labels(sorted(reached - {"ABNORMAL"}))
+        if care["care_priority"] == "retake_image":
+            findings_html = "<p>请先补充可判读的眼底照片。</p>"
+        elif friendly_list:
+            findings_html = "<ul>" + "".join(f"<li>{escape(item)}</li>" for item in friendly_list) + "</ul>"
+        elif level == "L1":
+            findings_html = ""
+        else:
+            findings_html = "<p>具体发现请结合眼科复核结果。</p>"
+        findings_section = f'<section class="card"><h2>眼底筛查发现</h2>{findings_html}</section>' if findings_html else ""
         comp_html = f"<section class='card'><h2>和上次检查对比</h2><p>{escape(comp['patient_note'])}</p></section>" if comp else ""
         overlay_fig = (
             f"<figure><img src='overlay.jpg' alt='重点观察示意图'><figcaption>机器重点帮您标出来的局部细节位置</figcaption></figure>"
@@ -841,8 +905,11 @@ class HospitalSystemStore:
   .btn{{border:none;background:#0f4c81;color:#fff;padding:9px 18px;border-radius:7px;font-weight:700;cursor:pointer}}
   .hero{{background:#fff;border:1px solid #dbe4f0;border-radius:12px;padding:22px 24px;margin-bottom:14px}}
   .hero.tone-ok{{border-left:6px solid #16a34a;background:#f0fdf4}}
-  .hero.tone-warn{{border-left:6px solid #d97706;background:#fffbeb}}
+  .hero.tone-urgent{{border-left:6px solid #b91c1c;background:#fef2f2}}
+  .hero.tone-warn{{border-left:6px solid #c2410c;background:#fff7ed}}
+  .hero.tone-mild{{border-left:6px solid #ca8a04;background:#fffbeb}}
   .hero.tone-info{{border-left:6px solid #0284c7;background:#f0f9ff}}
+{CARE_LEVEL_STYLE}
   h1{{margin:0 0 8px;font-size:22px;color:#0f172a}}
   .meta{{font-size:13.5px;color:#475569;display:flex;flex-wrap:wrap;gap:14px}}
   .card{{background:#fff;border:1px solid #dbe4f0;border-radius:12px;padding:18px 22px;margin-bottom:14px}}
@@ -866,19 +933,17 @@ class HospitalSystemStore:
       <span>分析时间：{escape(rep['analyzed_utc'][:10])}</span>
       <span>报告号：{escape(rep['report_id'])}</span>
     </div>
-    <p style="margin:12px 0 0;font-weight:700;font-size:16px;">{escape(headline)}</p>
+    <p style="margin:12px 0 0;font-weight:700;font-size:16px;">{_decision_badge(level)} {escape(headline)}</p>
     <p style="margin:6px 0 0;">{escape(comfort)}</p>
   </header>
-  <section class="card">
-    <h2>这次重点看下来有什么发现</h2>
-    {findings_html}
-  </section>
+  {findings_section}
   {comp_html}
   <section class="card">
     <h2>给您的贴心行动建议</h2>
-    <p><strong>建议复查安排：</strong>{escape(care['followup_time'])}</p>
+    <p><strong>建议时限</strong> {escape(care['followup_time'])}</p>
+    {destination_html}
     <ul>{"".join(f"<li>{escape(a)}</li>" for a in care.get("actions", []))}</ul>
-    <p style="font-size:13px;color:#64748b;margin-top:10px;">温馨提示：如果平时突然觉得眼前大量黑影飘动、闪光感或看东西发遮挡，请不要等预约时间，第一时间前往眼科门诊或急诊。</p>
+    <p style="font-size:13px;color:#64748b;margin-top:10px;">{escape(safety_note)}</p>
   </section>
   <section class="card">
     <h2>医院同步的眼底照片</h2>
@@ -890,87 +955,17 @@ class HospitalSystemStore:
 </div>
 </html>"""
 
-    def render_doctor_report_html(self, report_id: str) -> str | None:
-        rep = self.get_report(report_id)
-        if rep is None:
+    def render_doctor_report_html(self, report_id: str, *, report_explanation_label: str | None = None) -> str | None:
+        report = self.get_report(report_id)
+        if report is None:
             return None
-        patient = rep["patient"]
-        scr = rep["screening"]
-        care = rep["care_plan"]
-        comp = rep.get("comparison")
-        eye_badge = EYE_MEDICAL.get(rep["eye"], "眼别待确认")
-        review = (scr.get("report_summary") or {}).get("clinical_review") or {}
-        score_rows = "".join(_score_rows(scr))
-        legend = ((scr.get("visual_report") or {}).get("legend") or [])
-        legend_html = " · ".join(f"{escape(x['name'])}({escape(x['code'])})" for x in legend) or "未见四类显著候选病灶"
-        comp_block = (
-            f"<section class='card'><h2>同眼纵向历史对照</h2><p>{escape(comp['doctor_note'])}</p></section>"
-            if comp else ""
+        screening = report["screening"]
+        folder = self.reports_dir / report_id
+        has_overlay = bool(report["has_overlay"] and (folder / "overlay.jpg").is_file())
+        return _report_html(
+            screening.get("visual_report") if has_overlay or not report["has_overlay"] else None,
+            screening,
+            has_overlay=has_overlay,
+            hospital_record={**report, "has_original": (folder / "original.jpg").is_file()},
+            report_explanation_label=report_explanation_label,
         )
-        ov_block = (
-            f"<figure><img src='overlay.jpg' alt='病灶标注图'><figcaption>病灶候选/结构轮廓图：{legend_html}</figcaption></figure>"
-            if rep["has_overlay"] else ""
-        )
-        return f"""<!doctype html>
-<html lang="zh-CN">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{escape(patient.get('name', '患者'))} - 眼科临床辅助诊断报告</title>
-<style>
-  @page{{size:A4 portrait;margin:12mm}}
-  *{{box-sizing:border-box}}
-  body{{margin:0;padding:20px;background:#f3f6fa;color:#0f172a;font:13.5px/1.6 "PingFang SC","Microsoft YaHei",sans-serif}}
-  .wrap{{max-width:980px;margin:0 auto}}
-  .toolbar{{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:10px 16px;margin-bottom:12px}}
-  .btn{{border:none;background:#0f4c81;color:#fff;padding:8px 16px;border-radius:6px;font-weight:700;cursor:pointer}}
-  .hdr{{background:linear-gradient(120deg,#0a365c,#0f4c81);color:#fff;border-radius:10px;padding:18px 22px;margin-bottom:12px}}
-  .hdr h1{{margin:0 0 6px;font-size:20px}}
-  .meta{{font-size:12.5px;color:#cbd5e1;display:flex;flex-wrap:wrap;gap:14px}}
-  .card{{background:#fff;border:1px solid #dbe3ee;border-radius:10px;padding:15px 18px;margin-bottom:12px}}
-  .card h2{{margin:0 0 8px;font-size:15px;color:#0f4c81;border-bottom:1px solid #e2e8f0;padding-bottom:6px}}
-  .imgs{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
-  figure{{margin:0;background:#0f172a;padding:8px;border-radius:6px;color:#e2e8f0}}
-  figure img{{width:100%;display:block;border-radius:3px}}
-  figcaption{{font-size:12px;margin-top:5px}}
-  table{{width:100%;border-collapse:collapse;font-size:12.5px}}
-  th,td{{border:1px solid #dbe3ee;padding:6px 8px;text-align:left}}
-  th{{background:#f1f5f9}}
-  @media print{{body{{padding:0;background:#fff}}.no-print{{display:none}}}}
-</style>
-<div class="wrap">
-  <div class="toolbar no-print">
-    <span><strong>临床医生辅助阅片版</strong> · 报告编号：{escape(rep['report_id'])}</span>
-    <button class="btn" type="button" onclick="window.print()">导出 / 打印标准 A4 PDF</button>
-  </div>
-  <header class="hdr">
-    <h1>眼科临床辅助诊断与病灶分析报告</h1>
-    <div class="meta">
-      <span>患者姓名：{escape(patient.get('name', ''))}（{escape(patient.get('gender', ''))}，{patient.get('age', '')}岁）</span>
-      <span>手机档案：{escape(patient.get('phone', ''))}</span>
-      <span>眼别：{eye_badge}</span>
-      <span>慢病史：{escape(patient.get('chronic_history', '') or '无')}</span>
-      <span>分析时间：{escape(rep['analyzed_utc'])}</span>
-    </div>
-  </header>
-  <section class="card">
-    <h2>主判读与临床决策优先级</h2>
-    <p><strong>图像质控：</strong>{escape(review.get('quality', ''))}</p>
-    <p><strong>核心提示：</strong>{escape(review.get('primary', ''))}</p>
-    <p><strong>随访分级：</strong>{escape(care['priority_label'])} — {escape(care['followup_time'])}</p>
-    <p><strong>触发规则与依据：</strong>{escape(', '.join(care.get('rule_ids') or []))} / {escape(', '.join(care.get('references') or []))}</p>
-  </section>
-  {comp_block}
-  <section class="card">
-    <h2>眼底双图对照（原图 vs 四类病灶/解剖定位）</h2>
-    <div class="imgs">
-      <figure><img src="original.jpg" alt="原图"><figcaption>PACS 同步原始眼底照片</figcaption></figure>
-      {ov_block}
-    </div>
-  </section>
-  <section class="card">
-    <h2>多模型与 13 项研究筛查线量化明细</h2>
-    <table><thead><tr><th>项目</th><th>模型</th><th>得分</th><th>研究线</th><th>比较结果</th></tr></thead>
-    <tbody>{score_rows}</tbody></table>
-  </section>
-</div>
-</html>"""

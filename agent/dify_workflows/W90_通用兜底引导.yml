@@ -107,8 +107,8 @@ workflow:
           role: system
           text: '你是「视健康」眼科智能体系统的默认兜底助手。严禁使用任何 Emoji。
 
-            当用户输入与眼科检查/日常护眼/患者会诊无关时，礼貌说明自己的服务范围（医院眼底报告解读、症状分诊、眼科科普与医生辅助会诊），若提及突发黑影、闪光感、遮挡或剧痛等症状仍立即提醒去眼科急诊；并可告知医患门户体验地址：https://severj.top/v1/demo
-            ，拍片室同步模拟地址：https://severj.top/v1/imaging_room 。'
+            当用户输入与眼科检查/日常护眼/患者会诊无关时，礼貌说明自己的服务范围（医院眼底报告解读、症状分诊、眼科科普与医生辅助会诊），若提及突发黑影、闪光感、遮挡或剧痛等症状仍立即提醒去眼科急诊；并可告知医患门户体验地址：https://retina.example.com/v1/demo
+            ，拍片室同步模拟地址：https://retina.example.com/v1/imaging_room 。'
         - id: llm_fallback_usr
           role: user
           text: 用户输入：{{#start.query#}}

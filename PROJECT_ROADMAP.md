@@ -90,20 +90,26 @@
 | 集成可视化演示工作台 | `GET /v1/demo` & `POST /v1/demo/run` | 面向答辩与用户直观体验的一站式 Web 工作台，支持三层受众切换、内置双样本/自定义图片测试、多 Agent 协同链路 Trace 与一键跳转 A4 报告。 |
 
 ### 3.4 确定性随访规则优先级顺序
-`evaluate_care_rules` 按以下严格顺序命中（高位优先，**症状永远优先于图像未检出结果**）：
-1. `RULE_URGENT_SYMPTOM_01` → `urgent_ophthalmology`（立即眼科急诊评估：突发大量飞蚊/黑影、闪光感、幕帘样遮挡、突发视力骤降、剧烈眼痛伴头痛恶心；带否定前缀如“无飞蚊”自动豁免） `[SRC_NEI_RD_URGENT]`
-2. `RULE_QC_RETAKE_01` → `retake_image`（图像质量 Reject 或未完成质控，拦截一切正常/阴性结论并引导重拍） `[SRC_QC_RETAKE]`
-3. `RULE_DR_SEVERE_OR_VASC_01` → `prompt_ophthalmology`（糖网 3~4 级，或 `RVO`/`ODE` 达到筛查线，建议 1~2 周内专科面诊） `[SRC_DR_GUIDELINE_2024, SRC_RVO_ODE_CONSENSUS]`
-4. `RULE_MODERATE_OR_SPECIALIST_02` → `scheduled_ophthalmology`（糖网 2 级，或 `AMD`/`CSR`/`glaucoma`/`ODP`/`OPTIC_DISC_CUPPING` 达线，建议 1 个月内专科复核） `[SRC_DR_GUIDELINE_2024, SRC_DICT_DN_AMD, SRC_DICT_MACULA, SRC_DICT_ODC_GLAUCOMA, SRC_GLAUCOMA_SCREEN_2024]`
-5. `RULE_MILD_OR_PHENOTYPE_03` → `routine_followup`（糖网 1 级，或 `DN`/`MYOPIC_FUNDUS`/`TSLN`/`LS`/`ABNORMAL` 达线，建议 3~6 个月常规随访及病史核对） `[SRC_DR_GUIDELINE_2024, SRC_DICT_LS, SRC_DICT_MYOPIA]`
-6. `RULE_ROUTINE_ANNUAL_04` → `annual_screening`（覆盖范围内未达筛查线，建议常规 6~12 个月或每年眼健康随访，并提示模型覆盖边界） `[SRC_SCREEN_SCOPE]`
+`evaluate_care_rules` 返回 `clinical_decision`，包含级别、各触发项的证据与医学依据、就诊时限和去向、建议检查。病例总览采用最高级别，同级采用更早的时限。
+
+| 优先级 | 触发条件与筛查流程时限 |
+|---|---|
+| L4 · 立即眼科急诊 | 急症症状优先于图像质控和分级，立即就医（`urgent_ophthalmology`）。 |
+| 需核实图像质量 | 质控未完成或拒识时，重拍或由医生复核（`retake_image`）。 |
+| L4 · 优先转诊 | 视盘水肿线索建议 24 小时内评估，临床怀疑颅内压增高时当日急诊。RVO、糖网 3–4 级或重度糖网升阶复核预警，尽快转诊眼底病专科，筛查流程参考 1–2 周内（`prompt_ophthalmology`）。 |
+| L3 · 限期专科复核 | 糖网 2 级、青光眼风险、视盘凹陷或苍白、AMD、CSC、近视性眼底改变，2 周至 1 个月内复核（`scheduled_ophthalmology`）。 |
+| L2 · 常规观察 | 激光瘢痕 3–6 个月，糖网 1 级或玻璃膜疣 6–12 个月，豹纹状眼底 12 个月（`routine_followup`）。 |
+| L1 · 低风险 | 质控合格、糖网 0 级，且全部多病种筛查项目均低于研究筛查线，12 个月复查（`annual_screening`）。 |
+| 待专科复核 | 缺少有效分期或筛查结果，或仅见糖网筛查与专病分期不一致、综合异常等未分级线索时，复阅后确定级别（`scheduled_ophthalmology`）。 |
+
+升阶复核可使用结构化 `dr_severe_review_alert` 或本项目公开教学病例的同图专家标注与模型分期差异。该项只提升转诊优先级，原始糖网模型分期照常显示。
 
 ---
 
 ## 四、华为云 AgentArts 多智能体（Multi-Agent）协作架构
 
 ### 4.1 两种运行形态并存（单智能体全能版 + 多智能体协同版）
-- **形态 A（单智能体基线 `A0`）**：通过 `agent/prepare_agent.py` 一键生成 `agent/agent_ready_severj/agent_fundus.jsonl`，直接导入华为云即可使用全部 6 个 API 工具与医学知识库，用于单通道快速联调与兜底。
+- **形态 A（单智能体基线 `A0`）**：执行 `python agent/prepare_agent.py --origin https://retina.example.com --output agent/agent_ready_local` 生成 `agent_fundus.jsonl`。将示例域名换成实际部署地址后，可导入华为云联调 API 工具与医学知识库。
 - **形态 B（多智能体正式比赛架构 `A1 + A2 + A3 + A4`）**：在 AgentArts“多智能体应用”中由 `A1 主控导诊` 统一接收对话并按固定路由规则分发至三个专业子 Agent：
 
 ```text
@@ -171,5 +177,5 @@
 5. **医学与科普知识库 (`knowledge_base/`)**：共 5 份结构化知识文档（含患者亲切通俗科普文档 `05_常见眼病日常科普问答_患者亲切版.md`）。
 
 ### 8.2 一键启动与后续待办
-- **根目录一键启动**：`python run.py`（自动切换 `conda py310`、启动推理及双端门户、拉起带保活重连的 SSH 反向隧道至 `https://severj.top`，按 `Ctrl+C` 安全停止；仅本地演示可运行 `python run.py local`）。
-- **后续控制台联调待办**：在华为云 AgentArts 平台完成 5 份知识库上传、导入 `agent/agent_ready_severj/dify_workflows/` 下的 `.yml` 工作流并装配两个多智能体应用；如有需要可在 `P30` 中接入华为市场眼科视频搜索 MCP。
+- **根目录一键启动**：`python run.py` 启动本机推理及双端门户。公网联调时运行 `python run.py up --origin https://retina.example.com --ssh-host retina-server`，并替换为实际 HTTPS 地址与 SSH 主机别名。按 `Ctrl+C` 停止服务。
+- **后续控制台联调待办**：在华为云 AgentArts 平台完成 5 份知识库上传、导入 `agent/agent_ready_local/dify_workflows/` 下的 `.yml` 工作流并装配两个多智能体应用；如有需要可在 `P30` 中接入华为市场眼科视频搜索 MCP。

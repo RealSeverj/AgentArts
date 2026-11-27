@@ -4,6 +4,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import asyncio
 import hmac
+from ipaddress import ip_address
 import json
 import logging
 import threading
@@ -22,6 +23,7 @@ from inference.clinical_workflow import (
     ClinicalWorkflowStore,
     CompareRequest,
     IntakeRequest,
+    evaluate_care_rules,
 )
 from inference.hospital_system import (
     AgentQueryRequest,
@@ -31,11 +33,25 @@ from inference.hospital_system import (
     PortalChatRequest,
 )
 from inference.image_io import InputImageError, URLFetchPolicy, fetch_and_decode_image
+from inference.local_llm import LocalExplanationUnavailable
 from inference.schemas import FundusResponse, ScreenRequest, failure_response
 from inference.settings import Settings
 
 LOGGER = logging.getLogger("retina.inference")
 KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+def _local_report_request(request: Request) -> bool:
+    if request.client is None or request.url.hostname not in LOOPBACK_HOSTS:
+        return False
+    try:
+        if not ip_address(request.client.host).is_loopback:
+            return False
+    except ValueError:
+        return False
+    origin = request.headers.get("origin")
+    return origin is None or origin == f"{request.url.scheme}://{request.url.netloc}"
 
 
 def safe_json(payload, status_code=200):
@@ -88,10 +104,11 @@ class RequestBoundary:
         return await self.app(scope, receive, identified_send)
 
 
-def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
+def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None, report_explainer=None):
     settings = settings or Settings.from_env()
     policy = URLFetchPolicy(**settings.image_policy)
     gate = threading.BoundedSemaphore(settings.max_concurrent_requests)
+    report_explanation_gate = threading.BoundedSemaphore(1)
     injected_engine = engine
     origin = visual_origin or settings.visual_origin
     delivery = None
@@ -309,15 +326,23 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
             response = app.state.engine.screen(decoded.image, request_id=rid, image_sha256=decoded.sha256)
             response["warnings"].extend(decoded.warnings)
             response = FundusResponse.model_validate(response).model_dump(exclude_unset=True)
+            summary = response.get("report_summary")
+            intake = {"eye": body.eye, "symptoms": body.symptoms, "history": body.history}
+            if summary is not None:
+                summary["clinical_decision"] = evaluate_care_rules(response, intake)["clinical_decision"]
             if delivery is not None and response["status"] in {"ok", "partial"}:
                 try:
-                    response["visual_report"] = delivery.create(decoded.image, response, decoded.sha256, rid)
+                    response["visual_report"] = delivery.create(
+                        decoded.image, {**response, "_report_intake": intake}, decoded.sha256, rid
+                    )
                 except Exception as error:
                     LOGGER.warning("visual_report_unavailable request_id=%s reason=%s", rid, type(error).__name__)
                     response["warnings"].append("visual_report_unavailable")
-            if response.get("report_summary") is not None:
-                response["report_summary"]["clinical_review"] = build_clinical_review(
-                    response, response.get("visual_report"))
+            if summary is not None:
+                summary["clinical_review"] = build_clinical_review(response)
+                visual = response.get("visual_report") or {}
+                if visual.get("reference_grade") is not None:
+                    summary["clinical_decision"] = evaluate_care_rules(response, intake)["clinical_decision"]
             if response["status"] in {"ok", "partial", "quality_rejected"}:
                 workflow.record_screening(
                     response,
@@ -341,6 +366,8 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                                 research_results={name: dict(skipped) for name in ("multilabel_11", "glaucoma")})
                 response["report_summary"] = build_report_summary(response["results"], response["research_results"])
                 response["report_summary"]["clinical_review"] = build_clinical_review(response)
+                intake = {"eye": body.eye, "symptoms": body.symptoms, "history": body.history}
+                response["report_summary"]["clinical_decision"] = evaluate_care_rules(response, intake)["clinical_decision"]
                 return safe_json(FundusResponse.model_validate(response).model_dump(exclude_unset=True))
             status = 413 if code in {"image_too_large", "image_pixel_limit"} else 415 if code in {
                 "unsupported_image_format", "image_animated"} else 422
@@ -442,7 +469,7 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
             return safe_json({"ok": False, "message": str(err)}, 422)
 
     @app.get("/v1/his/reports/{report_id}/{name}", include_in_schema=False)
-    def his_view_report(report_id: str, name: str):
+    def his_view_report(report_id: str, name: str, request: Request):
         if name == "patient.html":
             doc = hospital.render_patient_report_html(report_id)
             if doc is None:
@@ -450,7 +477,10 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
             return Response(doc.encode("utf-8"), media_type="text/html; charset=utf-8",
                             headers={"X-Content-Type-Options": "nosniff"})
         if name == "doctor.html":
-            doc = hospital.render_doctor_report_html(report_id)
+            explanation_label = report_explainer.label if report_explainer and _local_report_request(request) else None
+            doc = hospital.render_doctor_report_html(
+                report_id, report_explanation_label=explanation_label
+            )
             if doc is None:
                 return Response(status_code=404)
             return Response(doc.encode("utf-8"), media_type="text/html; charset=utf-8",
@@ -461,6 +491,23 @@ def create_app(settings=None, *, engine=None, fetcher=None, visual_origin=None):
                 return Response(status_code=404)
             return Response(blob, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"})
         return Response(status_code=404)
+
+    @app.post("/v1/his/reports/{report_id}/report-explanation", include_in_schema=False)
+    def his_report_explanation(report_id: str, request: Request):
+        if report_explainer is None or not _local_report_request(request):
+            return safe_json({"ok": False, "message": "请从本机医生端打开报告后生成解读。"}, 404)
+        report = hospital.get_report(report_id)
+        if report is None:
+            return safe_json({"ok": False, "message": "未找到对应的眼底报告。"}, 404)
+        if not report_explanation_gate.acquire(blocking=False):
+            return safe_json({"ok": False, "message": "模型正在解读另一份报告，请稍后重试。"}, 429)
+        try:
+            result = report_explainer.explain(report["screening"], report["care_plan"]["clinical_decision"])
+        except LocalExplanationUnavailable as error:
+            return safe_json({"ok": False, "message": str(error) or "模型暂未完成解读，请稍后重试。"}, 503)
+        finally:
+            report_explanation_gate.release()
+        return safe_json({"ok": True, **result})
 
     @app.post("/v1/his/portal/chat", include_in_schema=False)
     def his_portal_chat(body: PortalChatRequest):
